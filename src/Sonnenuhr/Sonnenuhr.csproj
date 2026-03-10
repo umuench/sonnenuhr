@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>Sonnenuhr</AssemblyName>
+    <RootNamespace>Sonnenuhr</RootNamespace>
+    <ApplicationIcon></ApplicationIcon>
+    <Version>1.0.0</Version>
+    <Authors>Uwe Markus Münch</Authors>
+    <Company>Breihof IT GmbH</Company>
+    <Description>Automatisierte Generierung standortspezifischer Sonnenuhr-Wallpaper für Windows 11</Description>
+    <Copyright>Copyright © 2026 Breihof IT GmbH</Copyright>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <Optimize>false</Optimize>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Text.Json" Version="9.0.3" />
+  </ItemGroup>
+
+</Project>

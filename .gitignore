@@ -1,0 +1,84 @@
+# .gitignore – Sonnenuhr-Projekt
+
+# ── Build-Ausgaben ─────────────────────────────────────────
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# ── Visual Studio ──────────────────────────────────────────
+.vs/
+*.vspx
+*.vssscc
+*.vspscc
+*.pidb
+*.svclog
+*.scc
+
+# ── .NET Core / .NET 5+ ───────────────────────────────────
+project.lock.json
+project.fragment.lock.json
+artifacts/
+**/Properties/launchSettings.json
+
+# ── NuGet ─────────────────────────────────────────────────
+*.nupkg
+*.snupkg
+**/[Pp]ackages/
+!**/[Pp]ackages/build/
+*.nuget.props
+*.nuget.targets
+.nuget/
+nuget.config
+
+# ── Publish-Ausgaben ───────────────────────────────────────
+**/publish/
+**/PublishProfiles/
+
+# ── Test-Ausgaben ──────────────────────────────────────────
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+TestResult.xml
+coverage*.xml
+*.coverage
+*.coveragexml
+
+# ── Windows-Benutzer-Daten ────────────────────────────────
+*.rsuser
+*.VC.VC.opendb
+*.VC.db
+
+# ── Temporäre Dateien ──────────────────────────────────────
+*.tmp
+*.temp
+~$*
+
+# ── Generierte Wallpaper (Laufzeitausgabe) ─────────────────
+**/wallpapers/*.png
+**/wallpapers/*.bmp
+
+# ── Anwendungskonfiguration (benutzerspezifisch) ───────────
+settings.json
+
+# ── ReSharper ─────────────────────────────────────────────
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# ── Rider ─────────────────────────────────────────────────
+.idea/
+*.sln.iml
+
+# ── macOS ─────────────────────────────────────────────────
+.DS_Store
+*.AppleDouble
+*.LSOverride
+
+# ── Windows-Thumbnails ────────────────────────────────────
+Thumbs.db
+ehthumbs.db
+Desktop.ini

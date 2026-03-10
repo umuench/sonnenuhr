@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Sonnenuhr/Sonnenuhr.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Sonnenuhr.Tests/Sonnenuhr.Tests.csproj" />
+  </Folder>
+</Solution>
