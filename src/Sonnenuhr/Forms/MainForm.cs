@@ -306,6 +306,10 @@ public partial class MainForm : Form
     /// <summary>Erstellt das System-Tray-Icon mit Kontextmenü.</summary>
     private NotifyIcon CreateTrayIcon()
     {
+        // ── EINGABE ────────────────────────────────────────────
+        // Icon aus eingebetteter Ressource laden; Fallback auf Systemicon
+        Icon appIcon = LoadEmbeddedIcon() ?? SystemIcons.Application;
+
         // ── VERARBEITUNG ───────────────────────────────────────
         var menu = new ContextMenuStrip();
         menu.Items.Add("Öffnen",        null, (_, _) => { Show(); WindowState = FormWindowState.Normal; });
@@ -315,14 +319,42 @@ public partial class MainForm : Form
 
         var icon = new NotifyIcon
         {
-            Text            = "Sonnenuhr – Wallpaper-Generator",
-            Icon            = SystemIcons.Application,
+            Text             = "Sonnenuhr – Wallpaper-Generator",
+            Icon             = appIcon,
             ContextMenuStrip = menu,
-            Visible         = true
+            Visible          = true
         };
         icon.DoubleClick += (_, _) => { Show(); WindowState = FormWindowState.Normal; };
 
+        // Formular-Icon ebenfalls setzen
+        Icon = appIcon;
+
         // ── AUSGABE ────────────────────────────────────────────
         return icon;
+    }
+
+    /// <summary>
+    /// Lädt das Anwendungsicon aus den eingebetteten Ressourcen.
+    /// </summary>
+    /// <returns>Geladenes <see cref="Icon"/> oder <c>null</c> bei Fehler.</returns>
+    private static Icon? LoadEmbeddedIcon()
+    {
+        // ── EINGABE ────────────────────────────────────────────
+        string resourceName = "Sonnenuhr.Resources.sonnenuhr.ico";
+
+        // ── VERARBEITUNG ───────────────────────────────────────
+        try
+        {
+            using var stream = System.Reflection.Assembly.GetExecutingAssembly()
+                                     .GetManifestResourceStream(resourceName);
+            if (stream is null) return null;
+
+            // ── AUSGABE ────────────────────────────────────────
+            return new Icon(stream);
+        }
+        catch
+        {
+            return null;
+        }
     }
 }
