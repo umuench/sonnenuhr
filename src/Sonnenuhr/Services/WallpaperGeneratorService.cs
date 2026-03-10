@@ -108,11 +108,20 @@ public class WallpaperGeneratorService
         g.FillRectangle(bgBrush, 0, 0, _config.ImageWidth, _config.ImageHeight);
 
         // Subtiler radialer Verlauf für Tiefenwirkung
-        using var gradBrush = new PathGradientBrush(
-            new[] { new PointF(_config.ImageWidth / 2f, _config.ImageHeight / 2f) })
+        // PathGradientBrush erfordert mind. 3 Punkte als geschlossenen Pfad
+        float cx = _config.ImageWidth / 2f;
+        float cy = _config.ImageHeight / 2f;
+        float r  = Math.Max(_config.ImageWidth, _config.ImageHeight) * 0.7f;
+        var gradPoints = new[]
         {
-            SurroundColors = new[] { Color.FromArgb(60, 255, 255, 255) },
-            CenterColor    = Color.FromArgb(0, 0, 0, 0)
+            new PointF(cx,     cy - r),
+            new PointF(cx + r, cy + r),
+            new PointF(cx - r, cy + r)
+        };
+        using var gradBrush = new PathGradientBrush(gradPoints)
+        {
+            SurroundColors = new[] { Color.FromArgb(0, 0, 0, 0) },
+            CenterColor    = Color.FromArgb(40, 255, 255, 255)
         };
 
         // ── AUSGABE ────────────────────────────────────────────

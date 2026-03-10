@@ -120,6 +120,9 @@ public partial class MainForm : Form
         if (_isGenerating) return;
         _isGenerating = true;
 
+        // Textfeld-Eingaben vor dem API-Aufruf in Settings übernehmen (InvariantCulture für Punkt-Notation)
+        ReadCoordinatesFromUi();
+
         SetStatus("Sonnendaten werden abgerufen …", isWorking: true);
 
         // ── VERARBEITUNG ───────────────────────────────────────
@@ -180,11 +183,36 @@ public partial class MainForm : Form
     {
         // ── EINGABE ────────────────────────────────────────────
         // ── VERARBEITUNG ───────────────────────────────────────
-        txtLatitude.Text    = _settings.Location.Latitude.ToString("F4");
-        txtLongitude.Text   = _settings.Location.Longitude.ToString("F4");
+        // InvariantCulture sicherstellt Punkt als Dezimaltrennzeichen (nicht lokales Komma)
+        txtLatitude.Text    = _settings.Location.Latitude.ToString("F4", System.Globalization.CultureInfo.InvariantCulture);
+        txtLongitude.Text   = _settings.Location.Longitude.ToString("F4", System.Globalization.CultureInfo.InvariantCulture);
         txtLocationName.Text = _settings.Location.Name;
         numInterval.Value   = _settings.UpdateIntervalMinutes;
         chkAutostart.Checked = _settings.StartWithWindows;
+
+        // ── AUSGABE ────────────────────────────────────────────
+        lblLocationDisplay.Text = _settings.Location.ToString();
+    }
+
+    /// <summary>
+    /// Liest Koordinaten und Standortname aus den Textfeldern und schreibt sie
+    /// in <see cref="_settings"/>. Erwartet Punkt als Dezimaltrennzeichen.
+    /// Ungültige Eingaben werden stillschweigend ignoriert.
+    /// </summary>
+    private void ReadCoordinatesFromUi()
+    {
+        // ── EINGABE ────────────────────────────────────────────
+        var culture = System.Globalization.CultureInfo.InvariantCulture;
+
+        // ── VERARBEITUNG ───────────────────────────────────────
+        if (double.TryParse(txtLatitude.Text,  System.Globalization.NumberStyles.Float, culture, out double lat))
+            _settings.Location.Latitude  = lat;
+
+        if (double.TryParse(txtLongitude.Text, System.Globalization.NumberStyles.Float, culture, out double lon))
+            _settings.Location.Longitude = lon;
+
+        if (!string.IsNullOrWhiteSpace(txtLocationName.Text))
+            _settings.Location.Name = txtLocationName.Text.Trim();
 
         // ── AUSGABE ────────────────────────────────────────────
         lblLocationDisplay.Text = _settings.Location.ToString();

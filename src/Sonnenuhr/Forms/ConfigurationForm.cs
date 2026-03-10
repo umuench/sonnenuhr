@@ -70,7 +70,7 @@ public class ConfigurationForm : Form
     private void InitializeLayout()
     {
         Text          = "⚙  Darstellungs-Einstellungen";
-        Size          = new System.Drawing.Size(420, 460);
+        Size          = new System.Drawing.Size(440, 560);
         MinimumSize   = Size;
         MaximumSize   = Size;
         StartPosition = FormStartPosition.CenterParent;
