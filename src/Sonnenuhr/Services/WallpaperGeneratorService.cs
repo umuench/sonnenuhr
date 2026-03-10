@@ -277,14 +277,11 @@ public class WallpaperGeneratorService
         TimeZoneInfo timeZone)
     {
         // ── EINGABE ────────────────────────────────────────────
-        float panelX = _config.ImageWidth * 0.04f;
-        float panelY = _config.ImageHeight * 0.06f;
-
-        using var panelBrush = new SolidBrush(Color.FromArgb(120, 10, 10, 30));
-        using var borderPen  = new Pen(Color.FromArgb(80, _config.PrimaryColor), 1f);
-        using var titleFont  = new Font(_config.FontFamily, _config.FontSizeBase * 1.1f, FontStyle.Bold);
-        using var infoFont   = new Font(_config.FontFamily, _config.FontSizeBase * 0.85f, FontStyle.Regular);
-        using var textBrush  = new SolidBrush(_config.SecondaryColor);
+        using var panelBrush  = new SolidBrush(Color.FromArgb(120, 10, 10, 30));
+        using var borderPen   = new Pen(Color.FromArgb(80, _config.PrimaryColor), 1f);
+        using var titleFont   = new Font(_config.FontFamily, _config.FontSizeBase * 1.1f, FontStyle.Bold);
+        using var infoFont    = new Font(_config.FontFamily, _config.FontSizeBase * 0.85f, FontStyle.Regular);
+        using var textBrush   = new SolidBrush(_config.SecondaryColor);
         using var accentBrush = new SolidBrush(_config.AccentColor);
 
         // ── VERARBEITUNG ───────────────────────────────────────
@@ -305,22 +302,41 @@ public class WallpaperGeneratorService
             lines.Add(($"Tageslänge:   {solarData.DayLength:hh\\:mm} Std.", false));
         }
 
-        // Panel-Hintergrund zeichnen
-        float panelWidth  = 340f;
-        float lineHeight  = _config.FontSizeBase * 1.8f;
-        float panelHeight = lines.Count * lineHeight + 20f;
+        if (lines.Count == 0) return;
 
-        g.FillRectangle(panelBrush,
-            panelX - 10, panelY - 10, panelWidth, panelHeight);
-        g.DrawRectangle(borderPen,
-            panelX - 10, panelY - 10, panelWidth, panelHeight);
+        // Schriftgrößen-abhängige Maße ermitteln
+        const float padding    = 16f;
+        float lineHeight = _config.FontSizeBase * 1.8f;
 
-        // Textzeilen ausgeben
+        // Breiteste Zeile messen → Panel passt sich der Schriftgröße an
+        float maxTextWidth = 0f;
+        foreach (var (text, accent) in lines)
+        {
+            var   font  = accent ? titleFont : infoFont;
+            float width = g.MeasureString(text, font).Width;
+            if (width > maxTextWidth) maxTextWidth = width;
+        }
+
+        float panelWidth  = maxTextWidth + padding * 2f;
+        float panelHeight = lines.Count * lineHeight + padding;
+
+        // Rechts ausrichten: rechter Rand = 4 % der Bildbreite
+        float rightMargin = _config.ImageWidth * 0.04f;
+        float panelX      = _config.ImageWidth - rightMargin - panelWidth;
+        float panelY      = _config.ImageHeight * 0.06f;
+
+        // Panel-Hintergrund und Rahmen zeichnen
+        g.FillRectangle(panelBrush, panelX, panelY, panelWidth, panelHeight);
+        g.DrawRectangle(borderPen,  panelX, panelY, panelWidth, panelHeight);
+
+        // Textzeilen einheitlich mit innerem Abstand ausgeben
         for (int i = 0; i < lines.Count; i++)
         {
             var brush = lines[i].accent ? accentBrush : textBrush;
-            var font  = lines[i].accent ? titleFont : infoFont;
-            g.DrawString(lines[i].text, font, brush, panelX, panelY + i * lineHeight);
+            var font  = lines[i].accent ? titleFont   : infoFont;
+            g.DrawString(lines[i].text, font, brush,
+                         panelX + padding,
+                         panelY + padding / 2f + i * lineHeight);
         }
 
         // ── AUSGABE ────────────────────────────────────────────
