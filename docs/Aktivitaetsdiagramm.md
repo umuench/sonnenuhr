@@ -18,6 +18,7 @@
 1. [Hauptworkflow: Wallpaper-Generierung](#1-hauptworkflow-wallpaper-generierung)
 2. [Workflow: Konfigurationsänderung](#2-workflow-konfigurationsänderung)
 3. [Workflow: Anwendungsstart](#3-workflow-anwendungsstart)
+4. [Workflow: Stadtsuche](#4-workflow-stadtsuche)
 
 ---
 
@@ -256,6 +257,68 @@ flowchart TD
 | **Fehlertoleranz** | Wenn die vorhandene JSON-Datei korrumpiert oder unvollständig ist, werden ungültige Felder durch Standardwerte ersetzt, statt die Anwendung zu beenden. |
 | **Initialer Wallpaper-Abruf** | Nach dem Start wird sofort einmalig ein Wallpaper generiert, damit der Benutzer nicht auf den ersten Timer-Tick warten muss. |
 | **Minimierter Start** | Wenn die Anwendung über den Windows-Autostart gestartet wird, erscheint sie nicht im Vordergrund, sondern startet direkt minimiert im Systemtray. |
+
+---
+
+## 4. Workflow: Stadtsuche
+
+### 4.1 Beschreibung
+
+Dieser Workflow beschreibt den Ablauf der Stadtsuche-Funktion. Der Benutzer gibt einen
+Städtenamen in das Ortsname-Feld ein und klickt auf den Suchen-Button. Die Anwendung
+ruft die OpenStreetMap Nominatim API ab, wertet die Ergebnisse aus und übernimmt die
+Koordinaten automatisch in die Eingabefelder.
+
+### 4.2 Aktivitätsdiagramm
+
+```mermaid
+flowchart TD
+    A([▶ Start: Benutzer klickt\n"Suchen"-Button]) --> B{Stadtname-Feld\nleer?}
+
+    B -- Ja --> C[Hinweisdialog anzeigen:\nBitte Stadtnamen eingeben]
+    C --> Z([⏹ Ende: Abgebrochen])
+
+    B -- Nein --> D[Suchbegriff aus txtLocationName lesen\nSchaltfläche deaktivieren]
+    D --> E[GeocodingService.\nSearchCityAsync aufrufen]
+
+    E --> F{HTTP-Request\nerfolgreich?}
+
+    F -- Netzwerkfehler --> G[HttpRequestException abfangen\nFehler-MessageBox anzeigen]
+    G --> H[btnCitySearch.Enabled = true\nStatus: Fehler bei Stadtsuche]
+    H --> Z
+
+    F -- Erfolg --> I[JSON-Antwort deserialisieren\nNach Importance sortieren]
+    I --> J{Anzahl\nTreffer?}
+
+    J -- 0 Treffer --> K[MessageBox: Keine Orte gefunden\nTipp: Länderzusatz verwenden]
+    K --> L[Status: Bereit]
+    L --> Z
+
+    J -- 1 Treffer --> M[ApplyCityResult aufrufen\nDirekter Einzeltreffer]
+    M --> N[txtLocationName = ShortName\ntxtLatitude = Latitude\ntxtLongitude = Longitude]
+    N --> O[Settings speichern\nlblLocationDisplay aktualisieren]
+    O --> P[Status: Standort übernommen]
+    P --> Z
+
+    J -- Mehrere Treffer --> Q[CitySelectionForm erstellen\nMit Trefferliste befüllen]
+    Q --> R[Dialog als modale\nAnzeige öffnen]
+    R --> S{Benutzer-\nAktion?}
+
+    S -- Abbrechen --> T[Keine Änderungen\nDialog schließen]
+    T --> Z
+
+    S -- Auswählen --> U[Gewählten GeocodingResult\naus SelectedResult lesen]
+    U --> M
+```
+
+### 4.3 Erläuterung der Entscheidungspunkte
+
+| Entscheidungspunkt | Bedingung | Verzweigung |
+|---|---|---|
+| **Stadtname leer?** | `string.IsNullOrWhiteSpace(txtLocationName.Text)` | Ja → Hinweis; Nein → API-Aufruf |
+| **HTTP-Request erfolgreich?** | Kein Timeout, kein Netzwerkfehler | Fehler → Fehlerdialog; Erfolg → Deserialisierung |
+| **Anzahl Treffer?** | `results.Count` | 0 → Meldung; 1 → Direkte Übernahme; >1 → Auswahldialog |
+| **Benutzer-Aktion im Dialog** | Klick auf „Auswählen" oder „Abbrechen" | Abbrechen → keine Änderung; Auswählen → ApplyCityResult |
 
 ---
 

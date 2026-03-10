@@ -30,6 +30,18 @@ classDiagram
             +ToString() string
         }
 
+        class GeocodingResult {
+            +DisplayName : string
+            +LatitudeText : string
+            +LongitudeText : string
+            +Type : string
+            +Importance : double
+            +Latitude : double
+            +Longitude : double
+            +ShortName : string
+            +ToString() string
+        }
+
         class SolarData {
             +Sunrise : DateTime
             +Sunset : DateTime
@@ -40,6 +52,7 @@ classDiagram
             +DayLength() TimeSpan
             +GetLocalSunrise(tz : TimeZoneInfo) DateTime
             +GetLocalSunset(tz : TimeZoneInfo) DateTime
+            +GetLocalSolarNoon(tz : TimeZoneInfo) DateTime
         }
 
         class WallpaperConfig {
@@ -106,15 +119,27 @@ classDiagram
             +SaveSettings(settings : AppSettings) void
             +GetConfigFilePath() string
         }
+
+        class GeocodingService {
+            -_httpClient : HttpClient
+            +SearchCityAsync(query : string, ct : CancellationToken) Task~IReadOnlyList~GeocodingResult~~
+            +Dispose() void
+        }
     }
 
     namespace Forms {
         class MainForm {
             -_configService : ConfigurationService
             -_solarApiService : SolarApiService
+            -_geocodingService : GeocodingService
             -_settings : AppSettings
             -_currentSolarData : SolarData
             +MainForm(startMinimized : bool)
+        }
+
+        class CitySelectionForm {
+            +SelectedResult : GeocodingResult?
+            +CitySelectionForm(results : IReadOnlyList~GeocodingResult~, query : string)
         }
 
         class ConfigurationForm {
@@ -137,6 +162,10 @@ classDiagram
 
     ConfigurationService ..> AppSettings : erstellt/lädt
     SolarApiService ..> SolarData : erstellt
+
+    MainForm --> GeocodingService : verwendet
+    GeocodingService ..> GeocodingResult : liefert
+    CitySelectionForm --> GeocodingResult : zeigt/wählt
 ```
 
 ---
@@ -151,7 +180,7 @@ Die Klasse `Location` repräsentiert einen geografischen Standort mit Breitengra
 
 #### `SolarData`
 
-Die Klasse `SolarData` hält die von der Sunrise-Sunset-API zurückgelieferten astronomischen Daten für einen bestimmten Tag und Standort. Alle Zeitangaben werden intern in UTC gespeichert. Die berechnete Eigenschaft `DayLength` gibt die Tageslänge als `TimeSpan` zurück. Die Methoden `GetLocalSunrise()` und `GetLocalSunset()` konvertieren die UTC-Zeiten in die angegebene Zeitzone.
+Die Klasse `SolarData` hält die von der Sunrise-Sunset-API zurückgelieferten astronomischen Daten für einen bestimmten Tag und Standort. Alle Zeitangaben werden intern in UTC gespeichert. Die berechnete Eigenschaft `DayLength` gibt die Tageslänge als `TimeSpan` zurück. Die Methoden `GetLocalSunrise()`, `GetLocalSunset()` und `GetLocalSolarNoon()` konvertieren die UTC-Zeiten in die angegebene Zeitzone.
 
 #### `WallpaperConfig`
 
@@ -160,6 +189,10 @@ Die Klasse `WallpaperConfig` kapselt alle Darstellungskonfigurationen für das z
 #### `AppSettings`
 
 Die Klasse `AppSettings` ist das zentrale Konfigurationsobjekt der Anwendung. Es aggregiert `Location` und `WallpaperConfig` und enthält zusätzlich globale Einstellungen wie das Aktualisierungsintervall, den Autostart-Status, die Zeitzone und den Zeitstempel des letzten API-Aufrufs. Die Methode `GetTimeZone()` liefert das `TimeZoneInfo`-Objekt für die gespeicherte `TimeZoneId`.
+
+#### `GeocodingResult`
+
+Die Klasse `GeocodingResult` ist das Datentransferobjekt für Antworten der OpenStreetMap Nominatim API. Es speichert den vollständigen Anzeigenamen (`DisplayName`), die Koordinaten als Zeichenketten (`LatitudeText`, `LongitudeText`) sowie den Ortstyp (`Type`) und die Relevanz (`Importance`). Die berechneten Eigenschaften `Latitude` und `Longitude` liefern die Koordinaten als `double`-Werte. `ShortName` extrahiert den ersten Teil des `DisplayName` vor dem ersten Komma und dient als kompakter Ortsname für die UI.
 
 ---
 
@@ -193,17 +226,25 @@ Die Klasse `WallpaperRegistryService` kapselt alle Interaktionen mit der Windows
 
 Die Klasse `ConfigurationService` verwaltet das Laden und Speichern der Benutzereinstellungen. Einstellungen werden als JSON-Datei unter `%APPDATA%\Sonnenuhr\settings.json` persistiert. Beim Laden wird geprüft, ob die Datei existiert; falls nicht, werden Standardwerte zurückgegeben. Die Serialisierung und Deserialisierung erfolgt über `System.Text.Json.JsonSerializer`.
 
+#### `GeocodingService`
+
+Die Klasse `GeocodingService` kapselt die Kommunikationslogik mit der OpenStreetMap Nominatim REST-API. Die Methode `SearchCityAsync()` sendet eine HTTPS-GET-Anfrage mit dem `featuretype=settlement`-Filter, deserialisiert die JSON-Antwort in eine Liste von `GeocodingResult`-Objekten und sortiert diese absteigend nach `Importance`. Die Klasse setzt einen aussagekräftigen `User-Agent`-Header und den `Accept-Language: de`-Header gemäß den Nominatim-Nutzungsbedingungen. Sie implementiert `IDisposable`, um den `HttpClient` ordnungsgemäß freizugeben.
+
 ---
 
 ### Namespace: Forms
 
 #### `MainForm`
 
-`MainForm` ist das Hauptfenster der Anwendung und der zentrale Koordinator. Es instanziiert und orchestriert die Service-Klassen, verwaltet den Timer für die automatische Aktualisierung, zeigt aktuelle Sonnendaten an und bietet dem Benutzer Schaltflächen zur manuellen Aktualisierung und zum Öffnen des Konfigurationsdialogs. Der Konstruktor akzeptiert einen `startMinimized`-Parameter, der beim Autostart verwendet wird.
+`MainForm` ist das Hauptfenster der Anwendung und der zentrale Koordinator. Es instanziiert und orchestriert die Service-Klassen, verwaltet den Timer für die automatische Aktualisierung, zeigt aktuelle Sonnendaten an und bietet dem Benutzer Schaltflächen zur manuellen Aktualisierung, zur Stadtsuche und zum Öffnen des Konfigurationsdialogs. Der Konstruktor akzeptiert einen `startMinimized`-Parameter, der beim Autostart verwendet wird. Der `GeocodingService` wird im `Dispose`-Block der Form ordnungsgemäß freigegeben.
 
 #### `ConfigurationForm`
 
 `ConfigurationForm` ist ein modaler Dialog, über den der Benutzer alle Darstellungsoptionen des Wallpapers konfigurieren kann. Das Formular empfängt eine Kopie des aktuellen `AppSettings`-Objekts, und die bearbeiteten Einstellungen sind nach dem Schließen über die öffentliche Eigenschaft `Settings` abrufbar. Bei Abbruch (Schaltfläche „Abbrechen") werden alle Änderungen verworfen.
+
+#### `CitySelectionForm`
+
+`CitySelectionForm` ist ein modaler Auswahldialog, der bei mehreren Treffern der Stadtsuche geöffnet wird. Er zeigt alle gefundenen `GeocodingResult`-Objekte in einer `ListBox` an. Bei Auswahl eines Eintrags wird eine Vorschau der Koordinaten und des Ortstyps eingeblendet. Ein Doppelklick auf einen Eintrag bestätigt die Auswahl sofort. Das gewählte Ergebnis ist über die Eigenschaft `SelectedResult` abrufbar.
 
 ---
 

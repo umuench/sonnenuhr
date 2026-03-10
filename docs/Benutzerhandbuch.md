@@ -44,6 +44,7 @@ Das Konzept der Sonnenuhr basiert auf der historischen Methode der Zeitmessung d
 - ⏱ **Automatische Aktualisierung** im konfigurierbaren Intervall
 - 🚀 **Autostart** mit Windows
 - 📊 **Aktuelle Informationen** direkt auf dem Wallpaper (Uhrzeit, Ortsname, Sonnenzeiten)
+- 🔍 **Stadtsuche** mit automatischer Koordinatenübernahme (OpenStreetMap Nominatim)
 
 ### 1.3 Für wen ist Sonnenuhr geeignet?
 
@@ -102,21 +103,26 @@ Eine detaillierte Schritt-für-Schritt-Installationsanleitung finden Sie im sepa
 
 ### 4.2 Standort einrichten
 
-Damit Sonnenuhr eine korrekte Sonnenuhr für Ihren Standort erstellen kann, müssen Sie Ihre geografischen Koordinaten eingeben:
+Damit Sonnenuhr eine korrekte Sonnenuhr für Ihren Standort erstellen kann, müssen Sie Ihren Standort konfigurieren:
 
-**Schritt 1:** Ermitteln Sie Ihren Breitengrad und Längengrad.
-> 💡 **Tipp:** Die Koordinaten Ihres Standorts können Sie einfach über [maps.google.com](https://maps.google.com) ermitteln: Rechtsklick auf Ihren Standort → Die Koordinaten werden angezeigt.
+**Schritt 1:** Geben Sie einen Stadtnamen in das Feld **„Ortsname"** ein (z.B. „Eberbach" oder „Johannesburg") und klicken Sie auf **„🔍 Suchen"**.
 
-**Schritt 2:** Geben Sie im Hauptfenster ein:
-- **Ortsname:** Einen benutzerfreundlichen Namen (z.B. „Frankfurt am Main")
-- **Breitengrad:** Den geografischen Breitengrad in Dezimalgrad (z.B. `50.1109`)
-- **Längengrad:** Den geografischen Längengrad in Dezimalgrad (z.B. `8.6821`)
+Die Anwendung durchsucht die OpenStreetMap-Datenbank und:
+- findet **genau einen Ort** → Koordinaten werden sofort übernommen
+- findet **mehrere Orte** mit dem gleichen Namen → ein Auswahldialog öffnet sich
 
-**Schritt 3:** Wählen Sie Ihre Zeitzone aus dem Dropdown-Menü.
+> 💡 **Tipp:** Wenn die Suche zu viele irrelevante Ergebnisse liefert, verwenden Sie einen Länderzusatz:  
+> `Eberbach, Deutschland` oder `Johannesburg, Südafrika`
 
-**Schritt 4:** Klicken Sie auf **„⟳ Jetzt aktualisieren"**.
+**Alternativ – Manuelle Eingabe:**
 
-Die Anwendung ruft nun die aktuellen Sonnendaten ab, berechnet die Sonnenuhr-Geometrie und setzt das generierte Bild als Desktop-Hintergrund.
+Wenn Sie die Koordinaten bereits kennen, können Sie Breitengrad und Längengrad auch direkt in die entsprechenden Felder eingeben:
+- **Breitengrad:** Dezimalgrad, z.B. `49.4875` (Nord positiv)
+- **Längengrad:** Dezimalgrad, z.B. `8.9967` (Ost positiv)
+
+> ⚠️ **Wichtig:** Verwenden Sie immer einen **Punkt** (`.`) als Dezimaltrennzeichen, kein Komma.
+
+**Schritt 2:** Klicken Sie auf **„⟳ Jetzt aktualisieren"**, um sofort ein Wallpaper für den neuen Standort zu generieren.
 
 ### 4.3 Erstes Wallpaper generieren
 
@@ -156,6 +162,7 @@ Das Hauptfenster ist in drei Bereiche unterteilt:
 | Steuerelement | Beschreibung | Eingabeformat |
 |---------------|--------------|---------------|
 | **Ortsname** | Frei wählbarer Name für den Standort | Text, max. 100 Zeichen |
+| **🔍 Suchen** | Startet die Stadtsuche über OpenStreetMap Nominatim API | — |
 | **Breitengrad** | Geografischer Breitengrad | Dezimalzahl, −90° bis +90° |
 | **Längengrad** | Geografischer Längengrad | Dezimalzahl, −180° bis +180° |
 | **Zeitzone** | Windows-Zeitzone für korrekte Zeitumrechnung | Dropdown-Liste |
@@ -429,6 +436,9 @@ Diese Formel liefert exakte Stundenlinien für einen flach auf dem Boden liegend
 
 **F: Benötigt Sonnenuhr ständig eine Internetverbindung?**  
 A: Nein. Die Internetverbindung wird nur beim Abruf der Sonnendaten benötigt. Zwischen den Aktualisierungen läuft die Anwendung offline. Wenn keine Verbindung verfügbar ist, bleibt das zuletzt generierte Wallpaper bestehen.
+
+**F: Wie funktioniert die Stadtsuche?**  
+A: Geben Sie einen Stadtnamen in das Feld „Ortsname" ein und klicken Sie auf „🔍 Suchen". Die Anwendung fragt die kostenlose OpenStreetMap Nominatim API ab und übernimmt die Koordinaten automatisch. Bei mehreren gleichnamigen Orten (z.B. gibt es mehrere Orte namens „Eberbach" weltweit) erscheint ein Auswahldialog. Die Koordinaten können anschließend noch manuell angepasst werden.
 
 **F: Ändert Sonnenuhr meine aktuellen Datenschutzeinstellungen oder Systemdateien?**  
 A: Nein. Sonnenuhr schreibt ausschließlich in den Benutzerkontext der Windows Registry (HKCU) und in das Anwendungsdatenverzeichnis (`%APPDATA%`). Systemdateien werden nicht verändert.

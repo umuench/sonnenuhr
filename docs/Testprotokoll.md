@@ -39,7 +39,9 @@
 | Integrationstests SolarApiService | 4 | 0 | 0 | 4 |
 | Integrationstests WallpaperGeneratorService | 3 | 0 | 0 | 3 |
 | UI-Tests | 2 | 0 | 0 | 2 |
-| **Gesamt** | **20** | **11** | **0** | **9** |
+| Integrationstests GeocodingService | 4 | 0 | 0 | 4 |
+| UI-Tests Stadtsuche | 1 | 0 | 0 | 1 |
+| **Gesamt** | **25** | **11** | **0** | **14** |
 
 > **Hinweis:** Integrationstests und UI-Tests sind zum Zeitpunkt der Erstellung dieses Protokolls noch nicht durchgeführt worden. Sie werden im Rahmen der Testphase (Phase 4, 17.08. – 24.08.2026) abgeschlossen.
 
@@ -398,7 +400,77 @@
 
 ---
 
-## 8. Fehlerbeschreibungen
+## 8. Tests: GeocodingService
+
+### TP-21: GeocodingService – Suche mit eindeutigem Ergebnis
+
+| Feld | Inhalt |
+|------|--------|
+| **Test-ID** | TP-21 |
+| **Testfall** | `GeocodingService.SearchCityAsync()` liefert mindestens ein Ergebnis für einen bekannten Ortsnamen |
+| **Testart** | Integrationstest (manuell) |
+| **Komponente** | `Services.GeocodingService` |
+| **Vorbedingung** | Internetverbindung aktiv; nominatim.openstreetmap.org erreichbar |
+| **Testeingabe** | `query = "Mannheim, Deutschland"` |
+| **Erwartetes Ergebnis** | `IReadOnlyList<GeocodingResult>` mit mindestens einem Eintrag; `results[0].ShortName == "Mannheim"`; `results[0].Latitude` und `Longitude` plausibel (ca. 49.49 / 8.47) |
+| **Tatsächliches Ergebnis** | Noch durchzuführen |
+| **Status** | ⏳ Noch durchzuführen |
+| **Bemerkung** | Geplant: 22.08.2026 |
+
+---
+
+### TP-22: GeocodingService – Stadtname mit mehreren Treffern
+
+| Feld | Inhalt |
+|------|--------|
+| **Test-ID** | TP-22 |
+| **Testfall** | `GeocodingService.SearchCityAsync()` liefert mehrere Ergebnisse für einen mehrdeutigen Ortsnamen |
+| **Testart** | Integrationstest (manuell) |
+| **Komponente** | `Services.GeocodingService` |
+| **Vorbedingung** | Internetverbindung aktiv |
+| **Testeingabe** | `query = "Eberbach"` (mehrere gleichnamige Orte existieren weltweit) |
+| **Erwartetes Ergebnis** | `results.Count > 1`; Ergebnisse sind absteigend nach `Importance` sortiert |
+| **Tatsächliches Ergebnis** | Noch durchzuführen |
+| **Status** | ⏳ Noch durchzuführen |
+| **Bemerkung** | Geplant: 22.08.2026 |
+
+---
+
+### TP-23: GeocodingService – Kein Treffer für unbekannten Namen
+
+| Feld | Inhalt |
+|------|--------|
+| **Test-ID** | TP-23 |
+| **Testfall** | `GeocodingService.SearchCityAsync()` gibt eine leere Liste zurück, wenn der Ortsname nicht gefunden wird |
+| **Testart** | Integrationstest (manuell) |
+| **Komponente** | `Services.GeocodingService` |
+| **Vorbedingung** | Internetverbindung aktiv |
+| **Testeingabe** | `query = "xyzAbcDef123NotACity"` |
+| **Erwartetes Ergebnis** | `results.Count == 0`; keine Exception |
+| **Tatsächliches Ergebnis** | Noch durchzuführen |
+| **Status** | ⏳ Noch durchzuführen |
+| **Bemerkung** | Geplant: 22.08.2026 |
+
+---
+
+### TP-24: UI-Test – Stadtsuche: Koordinatenübernahme in Textfelder
+
+| Feld | Inhalt |
+|------|--------|
+| **Test-ID** | TP-24 |
+| **Testfall** | Nach erfolgreicher Stadtsuche werden Koordinaten korrekt in die UI-Felder `txtLatitude` und `txtLongitude` übernommen |
+| **Testart** | UI-Test (manuell) |
+| **Komponente** | `Forms.MainForm`, `Services.GeocodingService` |
+| **Vorbedingung** | Anwendung gestartet; Internetverbindung aktiv |
+| **Testeingabe** | 1. „Mannheim, Deutschland" in das Feld „Ortsname" eingeben; 2. Schaltfläche „🔍 Suchen" klicken |
+| **Erwartetes Ergebnis** | `txtLatitude` enthält einen Wert im Format `49.XXXX`; `txtLongitude` enthält einen Wert im Format `8.XXXX`; `txtLocationName` enthält „Mannheim"; Einstellungen werden gespeichert |
+| **Tatsächliches Ergebnis** | Noch durchzuführen |
+| **Status** | ⏳ Noch durchzuführen |
+| **Bemerkung** | Geplant: 22.08.2026; Koordinatenformat: Punkt als Dezimaltrennzeichen (InvariantCulture) |
+
+---
+
+## 9. Fehlerbeschreibungen
 
 Zum Zeitpunkt der Erstellung dieses Protokolls (01.07.2026) sind **keine bekannten Fehler** in der Anwendung dokumentiert. Gefundene Fehler während der Testphase werden hier nachgetragen.
 

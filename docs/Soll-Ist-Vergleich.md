@@ -41,6 +41,7 @@ Projekterfolgs und eine Reflexion über Abweichungen.
 | F-09 | Automatische Wallpaper-Aktualisierung (Timer) | ✅ Vollständig implementiert | Keine | Konfigurierbares Intervall 1–1440 Minuten |
 | F-10 | **System-Tray-Integration** | ✅ Implementiert (Mehrwert) | Positiv | Nicht im ursprünglichen Plan – erhöht Benutzerfreundlichkeit erheblich |
 | F-11 | Autostart mit Windows | ✅ Vollständig implementiert | Keine | `HKCU\...\Run`-Registry-Eintrag, togglebar in UI |
+| F-12 | **Stadtsuche mit automatischer Koordinatenübernahme** | ✅ Implementiert (Mehrwert) | Positiv | Nominatim API (OpenStreetMap) – erleichtert Standortkonfiguration erheblich; kein API-Key erforderlich |
 
 ### 2.2 Qualitative Ziele
 

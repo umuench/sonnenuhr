@@ -42,7 +42,7 @@ Das Fenster ist in drei funktionale Gruppen (GroupBoxen) unterteilt:
 │                                                             │
 │  ┌─── Standort-Konfiguration ──────────────────────────┐   │
 │  │                                                      │   │
-│  │  Ortsname:    [________________________________]     │   │
+│  │  Ortsname:    [____________________] [🔍 Suchen]     │   │
 │  │                                                      │   │
 │  │  Breitengrad: [__________] °N  (z.B. 49.4875)       │   │
 │  │                                                      │   │
@@ -91,6 +91,7 @@ Das Fenster ist in drei funktionale Gruppen (GroupBoxen) unterteilt:
 | Steuerelement | Typ | Bindung | Beschreibung |
 |---------------|-----|---------|--------------|
 | **Ortsname** | TextBox | `_settings.Location.Name` | Benutzerfreundlicher Name des Standorts |
+| **🔍 Suchen** | Button | `btnCitySearch_Click` | Startet Stadtsuche über Nominatim API; übernimmt Koordinaten automatisch |
 | **Breitengrad** | NumericUpDown | `_settings.Location.Latitude` | Geografischer Breitengrad (−90° bis +90°) |
 | **Längengrad** | NumericUpDown | `_settings.Location.Longitude` | Geografischer Längengrad (−180° bis +180°) |
 | **Zeitzone** | ComboBox | `_settings.TimeZoneId` | Dropdown mit allen Windows-Zeitzonen |

@@ -18,6 +18,7 @@
 1. [Sequenzdiagramm 1: Wallpaper-Generierung](#1-sequenzdiagramm-wallpaper-generierung)
 2. [Sequenzdiagramm 2: Anwendungsstart](#2-sequenzdiagramm-anwendungsstart)
 3. [Sequenzdiagramm 3: Konfigurationsänderung](#3-sequenzdiagramm-konfigurationsänderung)
+4. [Sequenzdiagramm 4: Stadtsuche](#4-sequenzdiagramm-stadtsuche)
 
 ---
 
@@ -290,6 +291,105 @@ sequenceDiagram
 | **WallpaperRegistryService** | Systemintegration (statisch) | → Windows Registry |
 | **ConfigurationService** | Datenpersistenz | → Dateisystem |
 | **ConfigurationForm** | Benutzereingabe | ↔ MainForm |
+
+---
+
+## 4. Sequenzdiagramm: Stadtsuche
+
+### 4.1 Beschreibung
+
+Dieses Sequenzdiagramm zeigt den Ablauf der Stadtsuche. Der Benutzer gibt
+einen Stadtnamen ein und klickt auf den Suchen-Button. Je nach Anzahl der
+gefundenen Treffer werden die Koordinaten direkt übernommen oder ein
+Auswahldialog öffnet sich.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Benutzer
+    participant MF as MainForm
+    participant GS as GeocodingService
+    participant NOM as Nominatim API
+    participant CSF as CitySelectionForm
+
+    Benutzer->>MF: Stadtname eingeben und "Suchen" klicken
+    Note over MF: btnCitySearch_Click()<br/>btnCitySearch.Enabled = false<br/>Status: "Suche nach ..."
+
+    MF->>+GS: SearchCityAsync(query)
+    Note over GS: URL aufbauen:<br/>nominatim.openstreetmap.org/search?<br/>q={query}&format=jsonv2&featuretype=settlement
+
+    GS->>+NOM: HTTP GET (User-Agent: Sonnenuhr/1.0)
+    Note over NOM: Ortsname-Abfrage verarbeiten<br/>bis zu 10 Ergebnisse
+
+    NOM-->>-GS: HTTP 200 OK<br/>JSON-Array mit GeocodingResult[]
+
+    Note over GS: JSON deserialisieren<br/>Nach Importance absteigend sortieren
+
+    GS-->>-MF: IReadOnlyList<GeocodingResult>
+
+    alt 0 Treffer
+        Note over MF: MessageBox: "Keine Orte gefunden.<br/>Tipp: Länderzusatz verwenden"
+    else 1 Treffer
+        Note over MF: ApplyCityResult(results[0])
+        MF->>MF: txtLocationName = ShortName
+        MF->>MF: txtLatitude = Latitude (F4, InvariantCulture)
+        MF->>MF: txtLongitude = Longitude (F4, InvariantCulture)
+        MF->>MF: Settings speichern
+        MF-->>Benutzer: Koordinaten übernommen
+    else Mehrere Treffer
+        MF->>+CSF: new CitySelectionForm(results, query)
+        Note over CSF: ListBox mit allen Treffern<br/>aufsteigend nach Importance sortiert
+
+        CSF-->>-MF: Dialog instanziiert
+
+        MF->>+CSF: ShowDialog()
+        CSF-->>Benutzer: Auswahldialog zeigen
+
+        Benutzer->>CSF: Treffer auswählen
+        Note over CSF: Koordinaten-Vorschau aktualisieren
+
+        alt Benutzer klickt "Auswählen"
+            Benutzer->>CSF: Klick auf Auswählen
+            CSF->>CSF: SelectedResult = gewählter Eintrag
+            CSF->>CSF: DialogResult = OK
+            CSF-->>-MF: DialogResult.OK
+
+            MF->>MF: ApplyCityResult(selectionForm.SelectedResult)
+            MF-->>Benutzer: Koordinaten übernommen
+
+        else Benutzer klickt "Abbrechen"
+            Benutzer->>CSF: Klick auf Abbrechen
+            CSF-->>-MF: DialogResult.Cancel
+            Note over MF: Keine Änderungen
+        end
+    end
+
+    Note over MF: btnCitySearch.Enabled = true<br/>Status aktualisieren
+```
+
+### 4.2 Fehlerszenario: Netzwerkfehler bei Stadtsuche
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Benutzer
+    participant MF as MainForm
+    participant GS as GeocodingService
+    participant NOM as Nominatim API
+
+    Benutzer->>MF: Suchen klicken
+    MF->>+GS: SearchCityAsync(query)
+    GS->>+NOM: HTTP GET Request
+
+    alt Netzwerk nicht verfügbar
+        NOM-->>GS: Timeout nach 15 Sekunden
+        GS-->>-MF: HttpRequestException
+        Note over MF: Catch-Block: MessageBox mit Fehlermeldung<br/>Status: "Fehler bei der Stadtsuche"
+        MF-->>Benutzer: Fehler-Dialog angezeigt
+    end
+
+    Note over MF: btnCitySearch.Enabled = true (finally-Block)
+```
 
 ---
 

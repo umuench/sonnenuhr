@@ -132,6 +132,7 @@ Die folgenden Anforderungen **können** umgesetzt werden, sofern Zeit und Ressou
 | K-05 | **Mehrere Farbthemen** | Es können voreingestellte Farbthemen (z.B. „Dunkel", „Hell", „Klassisch") zur Auswahl angeboten werden. |
 | K-06 | **Standortname im Wallpaper** | Der konfigurierte Ortsname kann als Text im generierten Wallpaper eingeblendet werden. |
 | K-07 | **Anzeige von Uhrzeit** | Die aktuelle Uhrzeit kann optional im Wallpaper angezeigt werden. |
+| K-08 | **Stadtsuche via Geocoding-API** | Statt manueller Koordinateneingabe kann der Benutzer einen Stadtnamen suchen. Die Koordinaten werden über die OpenStreetMap Nominatim API automatisch ermittelt. Bei mehreren gleichnamigen Orten öffnet sich ein Auswahldialog. |
 
 ### 3.4 Abgrenzungskriterien
 
@@ -140,7 +141,7 @@ Die folgenden Punkte sind **ausdrücklich nicht** Gegenstand dieses Projekts:
 | Nr. | Abgrenzung |
 |-----|------------|
 | A-01 | Die Anwendung unterstützt **keine** anderen Betriebssysteme als Windows 11 (kein macOS, kein Linux, kein Windows 10 oder älter). |
-| A-02 | Es erfolgt **keine** automatische GPS-Standortermittlung; der Standort wird ausschließlich manuell eingegeben. |
+| A-02 | Es erfolgt **keine** automatische GPS-Standortermittlung. Die manuelle Koordinateneingabe wird durch eine **Stadtsuche-Funktion** (Nominatim API) ergänzt, die die Eingabe vereinfacht. |
 | A-03 | Die Anwendung bietet **keine** eigene Wetterdaten-Integration oder Wettervorhersagefunktion. |
 | A-04 | Es wird **kein** Mehrbenutzer-Betrieb unterstützt; die Konfiguration ist benutzerspezifisch (pro Windows-Benutzerprofil). |
 | A-05 | Die Anwendung bietet **keine** Datenbankintegration; die Datenspeicherung erfolgt ausschließlich über JSON-Dateien. |
@@ -185,7 +186,38 @@ GET https://api.sunrise-sunset.org/json?lat=49.4875&lng=8.4660&date=today&format
 }
 ```
 
-### 4.2 Systemschnittstelle: Windows Registry
+### 4.2 Externe Schnittstelle: OpenStreetMap Nominatim API
+
+| Eigenschaft | Beschreibung |
+|-------------|--------------|
+| **Anbieter** | OpenStreetMap / Nominatim-Projekt |
+| **Basis-URL** | `https://nominatim.openstreetmap.org/search` |
+| **Protokoll** | HTTPS (REST) |
+| **Methode** | HTTP GET |
+| **Authentifizierung** | Keine; Pflicht: aussagekräftiger `User-Agent`-Header gemäß Nutzungsbedingungen |
+| **Anfrage-Parameter** | `q` (Suchbegriff), `format=jsonv2`, `limit=10`, `featuretype=settlement` |
+| **Antwortformat** | JSON-Array mit GeocodingResult-Objekten |
+| **Rate-Limiting** | Max. 1 Anfrage/Sekunde gemäß Nutzungsbedingungen; in der Anwendung durch Benutzerinteraktion natürlich begrenzt |
+
+**Beispiel-Request:**
+```
+GET https://nominatim.openstreetmap.org/search?q=Eberbach%2C+Deutschland&format=jsonv2&limit=10&featuretype=settlement
+```
+
+**Beispiel-Response (gekürzt):**
+```json
+[
+  {
+    "display_name": "Eberbach, Rhein-Neckar-Kreis, Baden-Württemberg, Deutschland",
+    "lat": "49.46788",
+    "lon": "8.99278",
+    "type": "town",
+    "importance": 0.5324
+  }
+]
+```
+
+### 4.3 Systemschnittstelle: Windows Registry
 
 | Schlüssel | Pfad | Zweck |
 |-----------|------|-------|
@@ -194,7 +226,7 @@ GET https://api.sunrise-sunset.org/json?lat=49.4875&lng=8.4660&date=today&format
 
 Die Windows-API-Funktion `SystemParametersInfo(SPI_SETDESKWALLPAPER, ...)` wird verwendet, um den Desktop-Hintergrund nach dem Setzen des Registry-Eintrags zu aktualisieren.
 
-### 4.3 Dateisystemschnittstelle
+### 4.4 Dateisystemschnittstelle
 
 | Pfad | Inhalt | Format |
 |------|--------|--------|
@@ -202,7 +234,7 @@ Die Windows-API-Funktion `SystemParametersInfo(SPI_SETDESKWALLPAPER, ...)` wird 
 | `%APPDATA%\Sonnenuhr\wallpaper.png` | Zuletzt generiertes Wallpaper-Bild | PNG |
 | `%APPDATA%\Sonnenuhr\sonnenuhr.log` | Anwendungslog für Fehlerdiagnose | Textdatei |
 
-### 4.4 Interne Komponentenschnittstellen
+### 4.5 Interne Komponentenschnittstellen
 
 Die Kommunikation zwischen den internen Komponenten erfolgt über klar definierte C#-Interfaces und Methodenaufrufe. Details sind dem Klassendiagramm zu entnehmen.
 
