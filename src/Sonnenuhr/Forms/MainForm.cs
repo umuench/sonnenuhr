@@ -229,7 +229,7 @@ public partial class MainForm : Form
 
         DateTime sunrise  = data.GetLocalSunrise(tz);
         DateTime sunset   = data.GetLocalSunset(tz);
-        DateTime solarNoon = TimeZoneInfo.ConvertTimeFromUtc(data.SolarNoon, tz);
+        DateTime solarNoon = data.GetLocalSolarNoon(tz);
 
         // ── AUSGABE ────────────────────────────────────────────
         lblSunrise.Text   = $"Sonnenaufgang:   {sunrise:HH:mm}";

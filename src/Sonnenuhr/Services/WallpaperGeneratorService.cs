@@ -165,7 +165,7 @@ public class WallpaperGeneratorService
     {
         // ── EINGABE ────────────────────────────────────────────
         var hourLines    = SundialCalculator.CalculateAllHourLines(location.Latitude);
-        DateTime solarNoon = TimeZoneInfo.ConvertTimeFromUtc(solarData.SolarNoon, timeZone);
+        DateTime solarNoon = solarData.GetLocalSolarNoon(timeZone);
 
         using var linePen   = new Pen(_config.SecondaryColor, 1.5f);
         using var labelFont = new Font(_config.FontFamily, _config.FontSizeBase * 0.8f, FontStyle.Regular);
@@ -243,7 +243,7 @@ public class WallpaperGeneratorService
         // ── EINGABE ────────────────────────────────────────────
         if (!_config.ShowCurrentHourMarker) return;
 
-        DateTime solarNoon = TimeZoneInfo.ConvertTimeFromUtc(solarData.SolarNoon, timeZone);
+        DateTime solarNoon = solarData.GetLocalSolarNoon(timeZone);
         double? shadowAngle = SundialCalculator.CalculateCurrentShadowAngle(
                                   currentTime, solarNoon, location.Latitude);
 

@@ -57,8 +57,12 @@ public class SolarData
     /// </summary>
     /// <param name="timeZone">Zielzeitzone.</param>
     /// <returns>Sonnenaufgang in der lokalen Zeitzone.</returns>
+    /// <remarks>
+    /// Erzwingt <see cref="DateTimeKind.Utc"/>, da System.Text.Json bei ISO-8601-Strings
+    /// mit Offset +00:00 ggf. <see cref="DateTimeKind.Unspecified"/> setzt.
+    /// </remarks>
     public DateTime GetLocalSunrise(TimeZoneInfo timeZone) =>
-        TimeZoneInfo.ConvertTimeFromUtc(Sunrise, timeZone);
+        TimeZoneInfo.ConvertTimeFromUtc(AsUtc(Sunrise), timeZone);
 
     /// <summary>
     /// Konvertiert den UTC-Sonnenuntergang in die angegebene Zeitzone.
@@ -66,7 +70,25 @@ public class SolarData
     /// <param name="timeZone">Zielzeitzone.</param>
     /// <returns>Sonnenuntergang in der lokalen Zeitzone.</returns>
     public DateTime GetLocalSunset(TimeZoneInfo timeZone) =>
-        TimeZoneInfo.ConvertTimeFromUtc(Sunset, timeZone);
+        TimeZoneInfo.ConvertTimeFromUtc(AsUtc(Sunset), timeZone);
+
+    /// <summary>
+    /// Konvertiert die UTC-Sonnenmittagszeit in die angegebene Zeitzone.
+    /// </summary>
+    /// <param name="timeZone">Zielzeitzone.</param>
+    /// <returns>Sonnenmittag in der lokalen Zeitzone.</returns>
+    public DateTime GetLocalSolarNoon(TimeZoneInfo timeZone) =>
+        TimeZoneInfo.ConvertTimeFromUtc(AsUtc(SolarNoon), timeZone);
+
+    /// <summary>
+    /// Stellt sicher, dass ein <see cref="DateTime"/> als UTC markiert ist.
+    /// Notwendig, da JSON-Deserialisierung <see cref="DateTimeKind.Unspecified"/>
+    /// setzen kann, was <see cref="TimeZoneInfo.ConvertTimeFromUtc"/> abbricht.
+    /// </summary>
+    private static DateTime AsUtc(DateTime dt) =>
+        dt.Kind == DateTimeKind.Utc
+            ? dt
+            : DateTime.SpecifyKind(dt, DateTimeKind.Utc);
 
     // ── AUSGABE ────────────────────────────────────────────────
 
