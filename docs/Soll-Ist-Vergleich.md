@@ -42,6 +42,7 @@ Projekterfolgs und eine Reflexion über Abweichungen.
 | F-10 | **System-Tray-Integration** | ✅ Implementiert (Mehrwert) | Positiv | Nicht im ursprünglichen Plan – erhöht Benutzerfreundlichkeit erheblich |
 | F-11 | Autostart mit Windows | ✅ Vollständig implementiert | Keine | `HKCU\...\Run`-Registry-Eintrag, togglebar in UI |
 | F-12 | **Stadtsuche mit automatischer Koordinatenübernahme** | ✅ Implementiert (Mehrwert) | Positiv | Nominatim API (OpenStreetMap) – erleichtert Standortkonfiguration erheblich; kein API-Key erforderlich |
+| F-13 | **Animierter Hintergrund** | ✅ Implementiert (Mehrwert) | Positiv | Tageszeit­abhängiger Himmelsgradient, Sternenhimmel, Horizontglühen, Sonne/Mond auf Bogenbahn, astronomisch korrekte Mondphasen; als optionale Anforderung K-09 ursprünglich geplant, vollständig umgesetzt |
 
 ### 2.2 Qualitative Ziele
 
@@ -98,8 +99,8 @@ Projekterfolgs und eine Reflexion über Abweichungen.
 | **Gesamt** | **80 h** | **~80 h** | **0 h** |
 
 > **Anmerkung:** Die zusätzliche Stunde in der Implementierungsphase entstand durch die
-> ungeplante, aber wertvolle System-Tray-Integration. Diese wurde durch die Zeitersparnis
-> in Analyse und Entwurf kompensiert.
+> ungeplante, aber wertvolle System-Tray-Integration sowie den animierten Hintergrund.
+> Diese wurden durch die Zeitersparnis in Analyse und Entwurf kompensiert.
 
 ---
 
@@ -124,7 +125,10 @@ geplanten Zeit- und Budgetrahmens von 80 Stunden und 6.400 Euro erfolgreich abge
 
 Alle im Projektantrag definierten **funktionalen, qualitativen und technischen Ziele**
 wurden vollständig erreicht. Darüber hinaus wurde die Anwendung durch eine
-**System-Tray-Integration** erweitert, die die Benutzerfreundlichkeit erheblich steigert.
+**System-Tray-Integration** sowie einen **animierten Hintergrund** erweitert.
+Der animierte Hintergrund stellt den Tageshimmel, Sternennächte, Dämmerungsübergänge,
+Sonne und Mond auf ihrer Bogenbahn sowie astronomisch korrekte Mondphasen dar und
+steigert den visuellen Mehrwert der Anwendung erheblich.
 
 ### 5.2 Technische Erkenntnisse
 

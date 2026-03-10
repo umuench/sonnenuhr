@@ -19,6 +19,7 @@
 2. [Workflow: Konfigurationsänderung](#2-workflow-konfigurationsänderung)
 3. [Workflow: Anwendungsstart](#3-workflow-anwendungsstart)
 4. [Workflow: Stadtsuche](#4-workflow-stadtsuche)
+5. [Workflow: Animierter Hintergrund – DrawBackground](#5-workflow-animierter-hintergrund--drawbackground)
 
 ---
 
@@ -319,6 +320,67 @@ flowchart TD
 | **HTTP-Request erfolgreich?** | Kein Timeout, kein Netzwerkfehler | Fehler → Fehlerdialog; Erfolg → Deserialisierung |
 | **Anzahl Treffer?** | `results.Count` | 0 → Meldung; 1 → Direkte Übernahme; >1 → Auswahldialog |
 | **Benutzer-Aktion im Dialog** | Klick auf „Auswählen" oder „Abbrechen" | Abbrechen → keine Änderung; Auswählen → ApplyCityResult |
+
+---
+
+## 5. Workflow: Animierter Hintergrund – DrawBackground
+
+### 5.1 Beschreibung
+
+Dieser Workflow beschreibt den Entscheidungsbaum innerhalb der Methode `DrawBackground()` des `WallpaperGeneratorService`. Die Methode wird einmal pro Wallpaper-Generierung aufgerufen und zeichnet den vollständigen, tageszeit­abhängigen Hintergrund auf den GDI+-`Graphics`-Kontext.
+
+Der Ablauf gliedert sich in drei unbedingt ausgeführte Phasen (Himmelsfarbe, Sterne, Horizontglühen) und eine bedingte Phase, die je nach Tageszeit entweder die Sonne oder den Mond zeichnet.
+
+### 5.2 Aktivitätsdiagramm
+
+```mermaid
+flowchart TD
+    A([▶ Start: DrawBackground\ng, currentTime, sunrise, sunset]) --> B[GetSkyColors\ncurrentTime sunrise sunset]
+
+    B --> C[7 Farbstützpunkte interpolieren\nTiefe Nacht → Dämmerungsstufen\n→ Sonnenauf-untergang → Tag]
+    C --> D[LinearGradientBrush erstellen\ntopColor → horizonColor\nHintergrundrechteck füllen]
+
+    D --> E[DrawStars aufrufen\ncurrentTime sunrise sunset horizonY]
+    E --> F{Sterne sichtbar?\n60 min vor Aufgang\noder nach Untergang}
+    F -- Ja → Einblenden --> G[180 Sterne deterministisch\nSeed = aktuelles Datum\nSanftes Fade-In / Fade-Out\nstündliches Flackern]
+    F -- Nein Tag --> H[Sterne nicht zeichnen\nAlpha = 0]
+    G --> I
+    H --> I
+
+    I[DrawHorizonGlow aufrufen\ncurrentTime sunrise sunset horizonY]
+    I --> J{Nahe Horizont?\nDelta zu Auf- oder\nUntergang ≤ 60 min}
+    J -- Ja --> K[Alpha proportional zur Nähe\nPathGradientBrush\norangefarbener Ellipsen-Glow\nam Horizont]
+    J -- Nein --> L[Kein Horizontglühen\nAlpha = 0]
+    K --> M
+    L --> M
+
+    M{Tag oder Nacht?\ncurrentTime zwischen\nsunrise und sunset}
+
+    M -- Tag --> N[sunT berechnen\nt = currentTime minus sunrise\ndividiert durch sunset minus sunrise\n0 = Aufgang 1 = Untergang]
+    N --> O[CalculateCelestialPosition\nsunT imageWidth horizonY\nSinusbogen-Trajektorie]
+    O --> P[GetCelestialAlpha\nisDaytime = true\n±20 min Fade am Horizont]
+    P --> Q[DrawSun\npos alpha\n5 Glow-Schichten + Halo\n+ Scheibe + Kern]
+    Q --> Z
+
+    M -- Nacht --> R[CalculateMoonT\ncurrentTime sunrise sunset\n0 = Sonnenuntergang\n1 = Sonnenaufgang nächster Tag]
+    R --> S[CalculateCelestialPosition\nmoonT imageWidth horizonY]
+    S --> T[GetCelestialAlpha\nisDaytime = false]
+    T --> U[CalculateMoonPhase\nSynodischer Monat 29.53 Tage\nReferenz Neumond 06.01.2000\n0 = Neumond 0.5 = Vollmond]
+    U --> V[DrawMoon\npos alpha phase\nGlow + Mondscheibe\n+ Phasenüberlagerung]
+    V --> Z
+
+    Z([⏹ Ende: Hintergrund gezeichnet\nWeiter mit Sonnenuhr-Elementen])
+```
+
+### 5.3 Erläuterung der Entscheidungspunkte
+
+| Entscheidungspunkt | Bedingung | Verzweigung |
+|---|---|---|
+| **Sterne sichtbar?** | `currentTime` liegt innerhalb 60 min vor Sonnenaufgang oder nach Sonnenuntergang (Nacht) | Ja → Einblenden mit Fade; Nein → kein Zeichnen |
+| **Nahe Horizont?** | `|currentTime − localSunrise| ≤ 60 min` oder `|currentTime − localSunset| ≤ 60 min` | Ja → orangefarbener Ellipsen-Glow proportional zur Nähe |
+| **Tag oder Nacht?** | `currentTime` liegt zwischen `localSunrise` und `localSunset` | Tag → `DrawSun()` mit `sunT`-Fortschritt; Nacht → `DrawMoon()` mit `moonT`-Fortschritt |
+| **Mondphase** | Berechnung via `CalculateMoonPhase()` liefert Wert 0–1 | 0–0,5 = zunehmend (Schatten links); 0,5–1 = abnehmend (Schatten rechts) |
+| **Alpha-Überblendung** | ±20 min nahe Horizont für Sonne und Mond | Sanftes Einblenden (`float 0.0 → 1.0`) über `GetCelestialAlpha()` |
 
 ---
 

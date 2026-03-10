@@ -25,7 +25,9 @@
 5. [Integrationstests: SolarApiService](#5-integrationstests-solarapiservice)
 6. [Integrationstests: WallpaperGeneratorService](#6-integrationstests-wallpapergeneratorservice)
 7. [UI-Tests](#7-ui-tests)
-8. [Fehlerbeschreibungen](#8-fehlerbeschreibungen)
+8. [Integrationstests: Animierter Hintergrund](#8-integrationstests-animierter-hintergrund)
+9. [Tests: GeocodingService](#9-tests-geocodingservice)
+10. [Fehlerbeschreibungen](#10-fehlerbeschreibungen)
 
 ---
 
@@ -41,9 +43,10 @@
 | UI-Tests | 2 | 0 | 0 | 2 |
 | Integrationstests GeocodingService | 4 | 0 | 0 | 4 |
 | UI-Tests Stadtsuche | 1 | 0 | 0 | 1 |
-| **Gesamt** | **25** | **11** | **0** | **14** |
+| Integrationstests Animierter Hintergrund | 5 | 0 | 0 | 5 |
+| **Gesamt** | **30** | **11** | **0** | **19** |
 
-> **Hinweis:** Integrationstests und UI-Tests sind zum Zeitpunkt der Erstellung dieses Protokolls noch nicht durchgeführt worden. Sie werden im Rahmen der Testphase (Phase 4, 17.08. – 24.08.2026) abgeschlossen.
+> **Hinweis:** Integrationstests und UI-Tests sind zum Zeitpunkt der Erstellung dieses Protokolls noch nicht durchgeführt worden. Sie werden im Rahmen der Testphase (Phase 4, 17.08. – 24.08.2026) abgeschlossen. Die Testfälle TP-25 bis TP-29 decken das neu implementierte Feature „Animierter Hintergrund" ab.
 
 ---
 
@@ -400,7 +403,7 @@
 
 ---
 
-## 8. Tests: GeocodingService
+## 9. Tests: GeocodingService
 
 ### TP-21: GeocodingService – Suche mit eindeutigem Ergebnis
 
@@ -470,7 +473,102 @@
 
 ---
 
-## 9. Fehlerbeschreibungen
+---
+
+## 8. Integrationstests: Animierter Hintergrund
+
+### TP-25: Himmelsfarben zur richtigen Tageszeit korrekt
+
+| Feld | Inhalt |
+|------|--------|
+| **Test-ID** | TP-25 |
+| **Testfall** | `GetSkyColors()` liefert plausible Farben für Tag, Nacht und die verschiedenen Dämmerungsstufen |
+| **Testart** | Integrationstest (manuell) |
+| **Komponente** | `Services.WallpaperGeneratorService` (private Methode via erzeugtem Wallpaper) |
+| **Vorbedingung** | Testdaten für Mannheim: Sonnenaufgang 05:18 Uhr, Sonnenuntergang 21:42 Uhr |
+| **Testeingabe A** | `currentTime = 14:00 Uhr` (Tageshimmel) |
+| **Testeingabe B** | `currentTime = 02:00 Uhr` (tiefe Nacht) |
+| **Testeingabe C** | `currentTime = 05:20 Uhr` (Sonnenaufgang) |
+| **Erwartetes Ergebnis** | A: helles Blau (R≈16, G≈82, B≈204); B: sehr dunkles Blau (R≈4, G≈6, B≈14); C: Orangeton (R≈215, G≈92, B≈18) am Horizont |
+| **Tatsächliches Ergebnis** | Noch durchzuführen |
+| **Status** | ⏳ Noch durchzuführen |
+| **Bemerkung** | Geplant: 21.08.2026; Prüfung durch Auslesen der Pixel-Farbwerte aus dem generierten PNG |
+
+---
+
+### TP-26: Sonne tagsüber sichtbar, Mond nachts sichtbar
+
+| Feld | Inhalt |
+|------|--------|
+| **Test-ID** | TP-26 |
+| **Testfall** | Im generierten Wallpaper ist tagsüber eine Sonne und nachts ein Mond erkennbar |
+| **Testart** | Integrationstest (manuell) |
+| **Komponente** | `Services.WallpaperGeneratorService` |
+| **Vorbedingung** | Gültige `SolarData` für Mannheim, 01.07.2026 |
+| **Testeingabe A** | `currentTime = 10:00 Uhr` (Vormittag, Sonne erwartet) |
+| **Testeingabe B** | `currentTime = 23:00 Uhr` (Nacht, Mond erwartet) |
+| **Erwartetes Ergebnis** | A: Im oberen Bildbereich (Sinusbogen ca. links von Mitte) helle, gelblich-weiße Pixel (Sonne); B: Im oberen Bildbereich helle, bläulich-weiße Pixel (Mond); jeweils keine Exception |
+| **Tatsächliches Ergebnis** | Noch durchzuführen |
+| **Status** | ⏳ Noch durchzuführen |
+| **Bemerkung** | Geplant: 21.08.2026 |
+
+---
+
+### TP-27: Sterne bei Nacht sichtbar, tagsüber nicht
+
+| Feld | Inhalt |
+|------|--------|
+| **Test-ID** | TP-27 |
+| **Testfall** | Im generierten Wallpaper sind bei Nacht helle Pixel im Hintergrundbereich sichtbar (Sterne), tagsüber nicht |
+| **Testart** | Integrationstest (manuell) |
+| **Komponente** | `Services.WallpaperGeneratorService` |
+| **Vorbedingung** | Gültige `SolarData` für Mannheim, 01.07.2026 |
+| **Testeingabe A** | `currentTime = 02:00 Uhr` (tiefe Nacht, >60 min nach Untergang) |
+| **Testeingabe B** | `currentTime = 13:00 Uhr` (mittags) |
+| **Erwartetes Ergebnis** | A: Mehrere helle Pixel (Alpha > 0) im Himmelsbereich außerhalb der Sonnenuhr-Elemente; B: Keine auffälligen hellen Einzelpixel im Himmelsbereich |
+| **Tatsächliches Ergebnis** | Noch durchzuführen |
+| **Status** | ⏳ Noch durchzuführen |
+| **Bemerkung** | Geplant: 21.08.2026 |
+
+---
+
+### TP-28: Mondphasenberechnung korrekt
+
+| Feld | Inhalt |
+|------|--------|
+| **Test-ID** | TP-28 |
+| **Testfall** | `CalculateMoonPhase()` liefert astronomisch korrekte Phasenwerte für bekannte Referenzdaten |
+| **Testart** | Integrationstest (manuell; Referenzwert aus astronomischen Tabellen) |
+| **Komponente** | `Services.WallpaperGeneratorService` (private Methode via Reflexion oder Hilfsmethode) |
+| **Vorbedingung** | Bekannte Mondphasendaten: Vollmond am 15.01.2025 ca. 10:27 Uhr UTC |
+| **Testeingabe A** | `date = 06.01.2000` (Referenz-Neumond) → Erwartung: phase ≈ 0.0 |
+| **Testeingabe B** | `date = 21.01.2000` (ca. 15 Tage nach Referenz) → Erwartung: phase ≈ 0.5 (Vollmond) |
+| **Testeingabe C** | `date = 15.01.2025` → Erwartung: phase nahe 0.5 (bekannter Vollmond) |
+| **Erwartetes Ergebnis** | A: phase < 0.05; B: 0.45 < phase < 0.55; C: 0.45 < phase < 0.55 |
+| **Tatsächliches Ergebnis** | Noch durchzuführen |
+| **Status** | ⏳ Noch durchzuführen |
+| **Bemerkung** | Geplant: 21.08.2026; Formel: `((date − 06.01.2000).TotalDays % 29.53) / 29.53` |
+
+---
+
+### TP-29: Animierter Hintergrund wirft keine Exceptions
+
+| Feld | Inhalt |
+|------|--------|
+| **Test-ID** | TP-29 |
+| **Testfall** | `GenerateWallpaper()` mit animiertem Hintergrund läuft für alle kritischen Tageszeiten ohne unbehandelte Exception durch |
+| **Testart** | Integrationstest (manuell / automatisiert) |
+| **Komponente** | `Services.WallpaperGeneratorService` |
+| **Vorbedingung** | Gültige `SolarData` für Mannheim, 01.07.2026; temporäres Ausgabeverzeichnis vorhanden |
+| **Testeingabe** | Aufrufe mit `currentTime` = { 00:00, exakt Sonnenaufgang, 1 min vor Aufgang, 1 min nach Aufgang, 12:00, exakt Sonnenuntergang, 1 min vor Untergang, 1 min nach Untergang, 23:59 } |
+| **Erwartetes Ergebnis** | Kein `NullReferenceException`, `DivideByZeroException`, `ArgumentException` oder sonstige unbehandelte Exception bei keinem der neun Testfälle; PNG-Datei wird erstellt |
+| **Tatsächliches Ergebnis** | Noch durchzuführen |
+| **Status** | ⏳ Noch durchzuführen |
+| **Bemerkung** | Geplant: 21.08.2026; kritische Randwerte: exakter Auf-/Untergang kann Divisionen durch null provozieren (sunT = 0.0 oder 1.0) |
+
+---
+
+## 10. Fehlerbeschreibungen
 
 Zum Zeitpunkt der Erstellung dieses Protokolls (01.07.2026) sind **keine bekannten Fehler** in der Anwendung dokumentiert. Gefundene Fehler während der Testphase werden hier nachgetragen.
 

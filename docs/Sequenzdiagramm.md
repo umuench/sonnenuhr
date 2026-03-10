@@ -19,6 +19,7 @@
 2. [Sequenzdiagramm 2: Anwendungsstart](#2-sequenzdiagramm-anwendungsstart)
 3. [Sequenzdiagramm 3: Konfigurationsänderung](#3-sequenzdiagramm-konfigurationsänderung)
 4. [Sequenzdiagramm 4: Stadtsuche](#4-sequenzdiagramm-stadtsuche)
+5. [Sequenzdiagramm 5: Animierter Hintergrund](#5-sequenzdiagramm-animierter-hintergrund)
 
 ---
 
@@ -368,16 +369,6 @@ sequenceDiagram
 ```
 
 ### 4.2 Fehlerszenario: Netzwerkfehler bei Stadtsuche
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Benutzer
-    participant MF as MainForm
-    participant GS as GeocodingService
-    participant NOM as Nominatim API
-
-    Benutzer->>MF: Suchen klicken
     MF->>+GS: SearchCityAsync(query)
     GS->>+NOM: HTTP GET Request
 
@@ -390,6 +381,93 @@ sequenceDiagram
 
     Note over MF: btnCitySearch.Enabled = true (finally-Block)
 ```
+
+---
+
+## 5. Sequenzdiagramm: Animierter Hintergrund
+
+### 5.1 Beschreibung
+
+Dieses Sequenzdiagramm zeigt die interne Aufrufkette innerhalb von `WallpaperGeneratorService`, die beim Zeichnen des animierten Hintergrunds durchlaufen wird. Der Einstiegspunkt ist `GenerateWallpaper()`. Vor dem eigentlichen Zeichnen werden die lokalen Sonnenauf- und -untergangszeiten berechnet und als Parameter an `DrawBackground()` übergeben. Je nach Tageszeit werden Sonne oder Mond gezeichnet; Sterne, Horizontglühen und Himmelsfarbe werden immer berechnet.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant WGS as WallpaperGeneratorService
+    participant DB  as DrawBackground
+    participant GSC as GetSkyColors
+    participant DS  as DrawStars
+    participant DHG as DrawHorizonGlow
+    participant CP  as CalculateCelestialPosition
+    participant CMP as CalculateMoonPhase
+    participant DSun as DrawSun
+    participant DMoon as DrawMoon
+
+    Note over WGS: GenerateWallpaper() aufgerufen<br/>Bitmap(1920×1080) erstellen
+
+    WGS->>WGS: localSunrise = solarData.GetLocalSunrise(tz)
+    WGS->>WGS: localSunset  = solarData.GetLocalSunset(tz)
+
+    WGS->>+DB: DrawBackground(g, currentTime, localSunrise, localSunset)
+
+    DB->>+GSC: GetSkyColors(currentTime, sunrise, sunset)
+    Note over GSC: 7 Farbstützpunkte interpolieren:<br/>Tiefe Nacht → Astron. Dämmerung →<br/>Naut. Dämmerung → Bürg. Dämmerung →<br/>Sonnenauf-/untergang → Goldene Stunde →<br/>Tageshimmel
+    GSC-->>-DB: (topColor, horizonColor)
+
+    Note over DB: LinearGradientBrush mit topColor/horizonColor<br/>Hintergrundrechteck füllen
+
+    DB->>+DS: DrawStars(g, currentTime, sunrise, sunset, horizonY)
+    Note over DS: 180 Sterne deterministisch (Seed = Datum)<br/>Sanftes Ein-/Ausblenden ±60 min nach Sonnenuntergang<br/>Stündliches Flackern via Pseudo-Zufall
+    DS-->>-DB: void
+
+    DB->>+DHG: DrawHorizonGlow(g, currentTime, sunrise, sunset, horizonY)
+    Note over DHG: Orangefarbener Ellipsen-Glow<br/>±60 min um Auf-/Untergang<br/>via PathGradientBrush
+    DHG-->>-DB: void
+
+    alt Tageszeit (zwischen Sonnenaufgang und -untergang)
+        Note over DB: sunT = (currentTime − sunrise) / (sunset − sunrise)
+        DB->>+CP: CalculateCelestialPosition(sunT, imageWidth, horizonY)
+        Note over CP: Sinusbogen:<br/>t=0 → Horizont links (8 %)<br/>t=0.5 → Zenith (8 % Bildhöhe)<br/>t=1 → Horizont rechts (92 %)
+        CP-->>-DB: PointF sunPos
+
+        DB->>DB: GetCelestialAlpha(currentTime, sunrise, sunset, isDaytime: true)
+        Note over DB: Sanftes Ein-/Ausblenden ±20 min am Horizont
+
+        DB->>+DSun: DrawSun(g, sunPos, alpha)
+        Note over DSun: 5 Glow-Schichten + Halo + Scheibe + Kern<br/>via PathGradientBrush
+        DSun-->>-DB: void
+
+    else Nachtzeit (nach Sonnenuntergang oder vor Sonnenaufgang)
+        DB->>DB: CalculateMoonT(currentTime, sunrise, sunset)
+        Note over DB: moonT: 0 = Sonnenuntergang<br/>1 = Sonnenaufgang (nächster Tag)
+
+        DB->>+CP: CalculateCelestialPosition(moonT, imageWidth, horizonY)
+        CP-->>-DB: PointF moonPos
+
+        DB->>DB: GetCelestialAlpha(currentTime, sunrise, sunset, isDaytime: false)
+
+        DB->>+CMP: CalculateMoonPhase(currentTime.Date)
+        Note over CMP: Synodischer Monat (29,53 Tage)<br/>Referenz: Neumond 06.01.2000<br/>0 = Neumond, 0.5 = Vollmond
+        CMP-->>-DB: double phase
+
+        DB->>+DMoon: DrawMoon(g, moonPos, alpha, phase)
+        Note over DMoon: Bläulicher Glow + Mondscheibe<br/>+ DrawMoonPhase() für Terminator<br/>zunehmend = Schatten links<br/>abnehmend = Schatten rechts
+        DMoon-->>-DB: void
+    end
+
+    DB-->>-WGS: void (Hintergrund gezeichnet)
+
+    Note over WGS: Sonnenuhr-Elemente zeichnen<br/>(Zifferblatt, Stundenlinien, Schattenzeiger…)<br/>Bitmap.Save(path, PNG)
+```
+
+### 5.2 Erläuterung der Schlüsselentscheidungen
+
+| Entscheidung | Bedingung | Auswirkung |
+|---|---|---|
+| **Sonne oder Mond zeichnen?** | `currentTime` zwischen `localSunrise` und `localSunset` | Tag → `DrawSun()`; Nacht → `DrawMoon()` |
+| **Sterne anzeigen?** | `currentTime` nahe/nach Sonnenuntergang oder vor Sonnenaufgang | Sanftes Einblenden ab 60 min nach Untergang |
+| **Horizontglühen aktiv?** | `|currentTime − sunrise| ≤ 60 min` oder `|currentTime − sunset| ≤ 60 min` | Orangefarbener Glow proportional zur Nähe |
+| **Alpha-Überblendung** | ±20 min nahe Horizont | Sonne/Mond werden weich ein-/ausgeblendet |
 
 ---
 

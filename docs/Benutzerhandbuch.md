@@ -20,11 +20,12 @@
 3. [Installation](#3-installation)
 4. [Erste Schritte](#4-erste-schritte)
 5. [Benutzeroberfläche](#5-benutzeroberfläche)
-6. [Konfiguration](#6-konfiguration)
-7. [Automatische Aktualisierung](#7-automatische-aktualisierung)
-8. [Fehlerbehebung](#8-fehlerbehebung)
-9. [Technische Details](#9-technische-details)
-10. [Häufig gestellte Fragen (FAQ)](#10-häufig-gestellte-fragen-faq)
+6. [Animierter Hintergrund](#6-animierter-hintergrund)
+7. [Konfiguration](#7-konfiguration)
+8. [Automatische Aktualisierung](#8-automatische-aktualisierung)
+9. [Fehlerbehebung](#9-fehlerbehebung)
+10. [Technische Details](#10-technische-details)
+11. [Häufig gestellte Fragen (FAQ)](#11-häufig-gestellte-fragen-faq)
 
 ---
 
@@ -214,7 +215,66 @@ Wenn Sie das Hauptfenster minimieren oder schließen, wird die Anwendung in den 
 
 ---
 
-## 6. Konfiguration
+## 6. Animierter Hintergrund
+
+### 6.1 Überblick
+
+Sonnenuhr generiert einen vollständig animierten Hintergrund, der sich automatisch nach der aktuellen Tageszeit und dem konfigurierten Standort richtet. Der Hintergrund wird bei jeder Wallpaper-Aktualisierung neu berechnet – der Benutzer muss hierfür keine zusätzlichen Einstellungen vornehmen.
+
+> 💡 **Tipp:** Stellen Sie das Aktualisierungsintervall auf 15–30 Minuten (Abschnitt 8.1), um den Übergang von Tag zu Nacht besonders flüssig zu erleben.
+
+### 6.2 Himmelsfarben und Dämmerungsstufen
+
+Die Hintergrundfarbe des Wallpapers interpoliert automatisch zwischen sieben astronomisch definierten Farbzuständen:
+
+| Tagesabschnitt | Typische Uhrzeit (Mitteleuropa Sommer) | Erscheinungsbild |
+|---|---|---|
+| **Tiefe Nacht** | 0:00 – 03:00 Uhr | Sehr dunkles Dunkelblau |
+| **Astronomische Dämmerung** | ca. 90 min vor Aufgang | Dunkles Blauviolett |
+| **Nautische Dämmerung** | ca. 60 min vor Aufgang | Tiefes Blau |
+| **Bürgerliche Dämmerung** | ca. 30 min vor Aufgang | Blaugrau |
+| **Sonnenaufgang / -untergang** | exakt Auf-/Untergangszeit | Warme Orange- und Rottöne |
+| **Goldene Stunde** | ca. 30–60 min nach Aufgang | Goldgelb bis warmes Blau |
+| **Tageshimmel** | Tagsüber | Klares Himmelblau |
+
+### 6.3 Sterne
+
+Bei Nacht und in den Dämmerungsstunden erscheint ein Sternenhimmel mit 180 deterministisch platzierten Sternen:
+
+- Die Positionen der Sterne sind für jeden Tag identisch (deterministischer Zufallsgenerator, Seed = aktuelles Datum).
+- Die Sterne blenden sich sanft ein, sobald die Sonne 60 Minuten nach dem Untergang unter den Horizont gesunken ist.
+- Ein subtiles, stündlich wechselndes Flackern einzelner Sterne verstärkt den Eindruck eines lebendigen Nachthimmels.
+- Vor Sonnenaufgang blenden die Sterne sich entsprechend aus.
+
+### 6.4 Sonnenauf- und -untergang: Horizontglühen
+
+Innerhalb von ±60 Minuten um den Sonnenauf- oder -untergang erscheint ein orangefarbener Glow am Horizont. Die Intensität des Leuchtens ist proportional zur Nähe des Ereignisses – sie ist am stärksten exakt zum Zeitpunkt des Auf- oder Untergangs.
+
+### 6.5 Sonne und Mond auf der Bogenbahn
+
+Sonne und Mond bewegen sich auf einer Sinusbogen-Trajektorie über den Bildhintergrund:
+
+- Die **Sonne** ist tagsüber sichtbar. Sie erscheint links am Horizont beim Aufgang (8 % der Bildbreite), erreicht den Höhepunkt (Zenit, 8 % der Bildhöhe) zur Mittagszeit und sinkt rechts zum Untergang (92 % der Bildbreite).
+- Der **Mond** ist nachts auf derselben Bahn sichtbar. Sein Fortschritt wird von Sonnenuntergang bis Sonnenaufgang berechnet.
+- Sonne und Mond blenden sich jeweils in einem Zeitfenster von ±20 Minuten nahe dem Horizont weich ein und aus, um einen fließenden Übergang zwischen Tag und Nacht zu erzeugen.
+- Sonne und Mond werden mit mehrschichtigen Glow-Effekten dargestellt (Halo, Leuchtscheibe, Kern).
+
+### 6.6 Mondphasen
+
+Die aktuelle Mondphase wird exakt auf Basis des synodischen Monats (29,53 Tage, Referenz: Neumond 6. Januar 2000) berechnet und visuell dargestellt:
+
+| Mondphase | Erscheinungsbild |
+|---|---|
+| **Neumond** | Mondscheibe nicht sichtbar |
+| **Zunehmender Halbmond** | Rechte Hälfte beleuchtet, linke Hälfte im Schatten |
+| **Vollmond** | Vollständig beleuchtete Scheibe |
+| **Abnehmender Halbmond** | Linke Hälfte beleuchtet, rechte Hälfte im Schatten |
+
+Der Terminator (die Grenzlinie zwischen beleuchtetem und unbeleuchtetem Teil) wird als sanft gerenderte Kurve dargestellt.
+
+---
+
+## 7. Konfiguration
 
 ### 6.1 Farbschema anpassen
 
@@ -261,7 +321,7 @@ Im Abschnitt **„Anzeigeoptionen"** können Sie konfigurieren, welche Informati
 
 ---
 
-## 7. Automatische Aktualisierung
+## 8. Automatische Aktualisierung
 
 ### 7.1 Timer-Einstellung
 
@@ -303,7 +363,7 @@ Eintrag: Sonnenuhr
 
 ---
 
-## 8. Fehlerbehebung
+## 9. Fehlerbehebung
 
 ### 8.1 Häufige Probleme und Lösungen
 
@@ -379,7 +439,7 @@ Bei anhaltenden Problemen können Sie diese Datei öffnen und nach Fehlermeldung
 
 ---
 
-## 9. Technische Details
+## 10. Technische Details
 
 ### 9.1 Datenspeicherung
 
@@ -432,7 +492,7 @@ Diese Formel liefert exakte Stundenlinien für einen flach auf dem Boden liegend
 
 ---
 
-## 10. Häufig gestellte Fragen (FAQ)
+## 11. Häufig gestellte Fragen (FAQ)
 
 **F: Benötigt Sonnenuhr ständig eine Internetverbindung?**  
 A: Nein. Die Internetverbindung wird nur beim Abruf der Sonnendaten benötigt. Zwischen den Aktualisierungen läuft die Anwendung offline. Wenn keine Verbindung verfügbar ist, bleibt das zuletzt generierte Wallpaper bestehen.

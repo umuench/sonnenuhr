@@ -104,6 +104,21 @@ classDiagram
         class WallpaperGeneratorService {
             -_config : WallpaperConfig
             +GenerateWallpaper(data : SolarData, loc : Location, path : string, time : DateTime, tz : TimeZoneInfo) void
+            -DrawBackground(g : Graphics, currentTime : DateTime, sunrise : DateTime, sunset : DateTime) void
+            -GetSkyColors(currentTime : DateTime, sunrise : DateTime, sunset : DateTime) ValueTuple~Color_Color~
+            -DrawStars(g : Graphics, currentTime : DateTime, sunrise : DateTime, sunset : DateTime, horizonY : float) void
+            -DrawHorizonGlow(g : Graphics, currentTime : DateTime, sunrise : DateTime, sunset : DateTime, horizonY : float) void
+            -DrawEllipticalGlow(g : Graphics, cx : float, cy : float, rx : float, ry : float, alpha : int, color : Color) void
+            -DrawSun(g : Graphics, pos : PointF, alpha : float) void
+            -DrawMoon(g : Graphics, pos : PointF, alpha : float, phase : double) void
+            -DrawMoonPhase(g : Graphics, pos : PointF, radius : float, phase : double, alpha : float) void
+            -CalculateCelestialPosition(t : float, imageWidth : int, horizonY : float) PointF
+            -CalculateMoonT(currentTime : DateTime, sunrise : DateTime, sunset : DateTime) float
+            -GetCelestialAlpha(currentTime : DateTime, sunrise : DateTime, sunset : DateTime, isDaytime : bool) float
+            -CalculateMoonPhase(date : DateTime) double
+            -LerpColor(a : Color, b : Color, t : float) Color
+            -Lerp2(a : ValueTuple~Color_Color~, b : ValueTuple~Color_Color~, t : float) ValueTuple~Color_Color~
+            -DarkenColor(c : Color, factor : float) Color
         }
 
         class WallpaperRegistryService {
@@ -217,6 +232,15 @@ Die Klasse `SolarApiService` kapselt alle Kommunikationslogik mit der externen S
 #### `WallpaperGeneratorService`
 
 Die Klasse `WallpaperGeneratorService` ist für die Bildgenerierung zuständig. Sie nutzt die GDI+-Klassen aus `System.Drawing` (insbesondere `Graphics`, `Bitmap`, `Pen`, `Brush`, `Font`) um auf einem In-Memory-Bitmap die Sonnenuhr zu zeichnen. Die Klasse ruft intern `SundialCalculator.CalculateAllHourLines()` auf, um die Stundenlinien zu berechnen, und `CalculateCurrentShadowAngle()` für den Schattenzeiger. Das fertige Bild wird als PNG-Datei gespeichert.
+
+Die öffentliche Methode `GenerateWallpaper()` orchestriert den gesamten Zeichenprozess. Der animierte Hintergrund wird durch die private Methode `DrawBackground()` realisiert, die folgende Teilaufgaben an spezialisierte Hilfsmethoden delegiert:
+
+- **`GetSkyColors()`** interpoliert die Himmelsfarben (oben und am Horizont) anhand von sieben astronomisch definierten Farbstützpunkten zwischen tiefer Nacht, den verschiedenen Dämmerungsstufen, dem Sonnenauf-/-untergang und dem Tageshimmel.
+- **`DrawStars()`** platziert 180 Sterne deterministisch per Pseudo-Zufallszahl (Seed = aktuelles Datum), simuliert stündliches Flackern und blendet die Sterne sanft ein oder aus.
+- **`DrawHorizonGlow()`** erzeugt innerhalb von ±60 Minuten um Sonnenauf- und -untergang einen orangefarbenen Ellipsen-Glow am Horizont mittels `PathGradientBrush`.
+- **`DrawSun()` / `DrawMoon()`** zeichnen das jeweilige Himmelsobjekt mit mehrschichtigen Glow-Effekten auf einer Sinusbogen-Trajektorie, die von `CalculateCelestialPosition()` berechnet wird.
+- **`DrawMoonPhase()`** stellt die aktuelle Mondphase über einen gerendertem Terminator dar, der mit `CalculateMoonPhase()` auf Basis des synodischen Monats (29,53 Tage) ermittelt wird.
+- **`GetCelestialAlpha()`** berechnet den Transparenzwert für Sonne und Mond innerhalb eines Übergangsbereichs von ±20 Minuten nahe dem Horizont für weiche Ein- und Ausblendungen.
 
 #### `WallpaperRegistryService` (statisch)
 
