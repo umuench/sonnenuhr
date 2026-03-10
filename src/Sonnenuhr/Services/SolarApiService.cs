@@ -83,7 +83,9 @@ public class SolarApiService : IDisposable
             return null;
 
         // ── AUSGABE ────────────────────────────────────────────
-        return apiResponse.Results;
+        // System.Text.Json setzt DateTimeKind auf Local oder Unspecified für ISO-8601-Zeitstempel.
+        // TimeZoneInfo.ConvertTimeFromUtc() erfordert zwingend DateTimeKind.Utc → explizit korrigieren.
+        return NormalizeToUtc(apiResponse.Results);
     }
 
     /// <summary>
@@ -98,6 +100,31 @@ public class SolarApiService : IDisposable
         GetSolarDataAsync(location, DateTime.UtcNow.Date, cancellationToken);
 
     // ── PRIVATE HILFSMETHODEN ──────────────────────────────────
+
+    /// <summary>
+    /// Setzt das <see cref="DateTimeKind"/> aller Zeitfelder in <paramref name="data"/>
+    /// explizit auf <see cref="DateTimeKind.Utc"/>.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="System.Text.Json"/> deserialisiert ISO-8601-Zeitstempel mit dem Offset "+00:00"
+    /// als <see cref="DateTimeKind.Local"/> statt <see cref="DateTimeKind.Utc"/>.
+    /// <see cref="TimeZoneInfo.ConvertTimeFromUtc"/> wirft sonst eine
+    /// <see cref="ArgumentException"/> ("The supplied DateTime did not have the Kind
+    /// property set to Utc").
+    /// </remarks>
+    private static SolarData NormalizeToUtc(SolarData data)
+    {
+        // ── EINGABE ────────────────────────────────────────────
+        // ── VERARBEITUNG ───────────────────────────────────────
+        data.Sunrise            = DateTime.SpecifyKind(data.Sunrise,            DateTimeKind.Utc);
+        data.Sunset             = DateTime.SpecifyKind(data.Sunset,             DateTimeKind.Utc);
+        data.SolarNoon          = DateTime.SpecifyKind(data.SolarNoon,          DateTimeKind.Utc);
+        data.CivilTwilightBegin = DateTime.SpecifyKind(data.CivilTwilightBegin, DateTimeKind.Utc);
+        data.CivilTwilightEnd   = DateTime.SpecifyKind(data.CivilTwilightEnd,   DateTimeKind.Utc);
+
+        // ── AUSGABE ────────────────────────────────────────────
+        return data;
+    }
 
     /// <summary>
     /// Erstellt die vollständige API-Request-URL mit allen Parametern.
