@@ -25,6 +25,7 @@ partial class MainForm
     private System.Windows.Forms.TextBox       txtLongitude        = null!;
     private System.Windows.Forms.TextBox       txtLocationName     = null!;
     private System.Windows.Forms.Label         lblLocationDisplay  = null!;
+    private System.Windows.Forms.Button        btnCitySearch       = null!;
     private System.Windows.Forms.GroupBox      grpSolarData        = null!;
     private System.Windows.Forms.Label         lblSunrise          = null!;
     private System.Windows.Forms.Label         lblSunset           = null!;
@@ -76,9 +77,22 @@ partial class MainForm
         lblLatitudeText = CreateLabel("Breitengrad:",   10, 52, 110);
         lblLongitudeText = CreateLabel("Längengrad:",   10, 82, 110);
 
-        txtLocationName = new System.Windows.Forms.TextBox { Location = new System.Drawing.Point(125, 19), Size = new System.Drawing.Size(200, 23) };
+        txtLocationName = new System.Windows.Forms.TextBox { Location = new System.Drawing.Point(125, 19), Size = new System.Drawing.Size(155, 23) };
         txtLatitude     = new System.Windows.Forms.TextBox { Location = new System.Drawing.Point(125, 49), Size = new System.Drawing.Size(120, 23) };
         txtLongitude    = new System.Windows.Forms.TextBox { Location = new System.Drawing.Point(125, 79), Size = new System.Drawing.Size(120, 23) };
+
+        btnCitySearch = new System.Windows.Forms.Button
+        {
+            Text      = "🔍  Suchen",
+            Location  = new System.Drawing.Point(287, 16),
+            Size      = new System.Drawing.Size(165, 28),
+            BackColor = System.Drawing.Color.FromArgb(30, 50, 80),
+            ForeColor = System.Drawing.Color.FromArgb(180, 210, 255),
+            FlatStyle = System.Windows.Forms.FlatStyle.Flat,
+            Font      = new System.Drawing.Font("Segoe UI", 9f, System.Drawing.FontStyle.Regular),
+            Cursor    = System.Windows.Forms.Cursors.Hand
+        };
+        btnCitySearch.Click += btnCitySearch_Click;
 
         lblLocationDisplay = new System.Windows.Forms.Label
         {
@@ -94,7 +108,8 @@ partial class MainForm
 
         grpLocation.Controls.AddRange(new System.Windows.Forms.Control[]
             { lblNameText, lblLatitudeText, lblLongitudeText,
-              txtLocationName, txtLatitude, txtLongitude, lblLocationDisplay });
+              txtLocationName, btnCitySearch,
+              txtLatitude, txtLongitude, lblLocationDisplay });
 
         // ── SONNENDATEN-GRUPPE ─────────────────────────────────
         grpSolarData = CreateGroupBox("Aktuelle Sonnenzeitdaten", 20, 200, 470, 120);

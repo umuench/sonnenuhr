@@ -23,6 +23,7 @@ public partial class MainForm : Form
 
     private readonly ConfigurationService    _configService;
     private readonly SolarApiService         _solarApiService;
+    private readonly GeocodingService        _geocodingService;
     private AppSettings                      _settings;
     private SolarData?                       _currentSolarData;
     private readonly System.Windows.Forms.Timer _updateTimer;
@@ -41,9 +42,10 @@ public partial class MainForm : Form
         InitializeComponent();
 
         // ── VERARBEITUNG ───────────────────────────────────────
-        _configService   = new ConfigurationService();
-        _solarApiService = new SolarApiService();
-        _settings        = _configService.LoadSettings();
+        _configService    = new ConfigurationService();
+        _solarApiService  = new SolarApiService();
+        _geocodingService = new GeocodingService();
+        _settings         = _configService.LoadSettings();
 
         // Aktualisierungs-Timer konfigurieren
         _updateTimer = new System.Windows.Forms.Timer
@@ -103,6 +105,7 @@ public partial class MainForm : Form
         {
             _updateTimer.Dispose();
             _solarApiService.Dispose();
+            _geocodingService.Dispose();
             _trayIcon.Dispose();
             components?.Dispose();
         }
@@ -299,6 +302,111 @@ public partial class MainForm : Form
         _settings.UpdateIntervalMinutes = (int)numInterval.Value;
         _updateTimer.Interval = _settings.UpdateIntervalMinutes * 60 * 1000;
         _configService.SaveSettings(_settings);
+    }
+
+    /// <summary>
+    /// Sucht Städte nach dem eingegebenen Namen über den GeocodingService.
+    /// Bei einem Treffer werden Koordinaten direkt übernommen;
+    /// bei mehreren Treffern öffnet sich ein Auswahldialog.
+    /// </summary>
+    private async void btnCitySearch_Click(object sender, EventArgs e)
+    {
+        // ── EINGABE ────────────────────────────────────────────
+        string query = txtLocationName.Text.Trim();
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            MessageBox.Show(
+                "Bitte einen Stadtnamen eingeben.",
+                "Stadtsuche",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+            return;
+        }
+
+        // ── VERARBEITUNG ───────────────────────────────────────
+        btnCitySearch.Enabled = false;
+        SetStatus($"Suche nach \"{query}\" ...", isWorking: true);
+
+        try
+        {
+            var results = await _geocodingService.SearchCityAsync(query);
+
+            GeocodingResult? selected = results.Count switch
+            {
+                0 => null,
+                1 => results[0],
+                _ => ChooseFromMultipleResults(results, query)
+            };
+
+            if (selected is null)
+            {
+                if (results.Count == 0)
+                    MessageBox.Show(
+                        $"Keine Orte für \"{query}\" gefunden.\n\nTipp: Versuchen Sie einen Länderzusatz, z. B. \"Eberbach, Deutschland\".",
+                        "Stadtsuche – kein Ergebnis",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+
+                SetStatus("Bereit.", isWorking: false);
+                return;
+            }
+
+            // ── AUSGABE ────────────────────────────────────────
+            ApplyCityResult(selected);
+            SetStatus($"Standort übernommen: {selected.ShortName}", isWorking: false);
+        }
+        catch (OperationCanceledException)
+        {
+            SetStatus("Stadtsuche abgebrochen.", isWorking: false);
+        }
+        catch (HttpRequestException ex)
+        {
+            MessageBox.Show(
+                $"Netzwerkfehler bei der Stadtsuche:\n{ex.Message}",
+                "Stadtsuche – Fehler",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+            SetStatus("Fehler bei der Stadtsuche.", isWorking: false);
+        }
+        finally
+        {
+            btnCitySearch.Enabled = true;
+        }
+    }
+
+    /// <summary>
+    /// Öffnet den <see cref="CitySelectionForm"/> und gibt das gewählte Ergebnis zurück.
+    /// </summary>
+    private GeocodingResult? ChooseFromMultipleResults(
+        IReadOnlyList<GeocodingResult> results, string query)
+    {
+        using var selectionForm = new CitySelectionForm(results, query);
+        return selectionForm.ShowDialog(this) == DialogResult.OK
+            ? selectionForm.SelectedResult
+            : null;
+    }
+
+    /// <summary>
+    /// Überträgt den gewählten Geocoding-Treffer in die UI-Felder und in die Einstellungen.
+    /// </summary>
+    private void ApplyCityResult(GeocodingResult result)
+    {
+        // ── EINGABE ────────────────────────────────────────────
+        var culture = System.Globalization.CultureInfo.InvariantCulture;
+
+        // ── VERARBEITUNG ───────────────────────────────────────
+        txtLocationName.Text = result.ShortName;
+        txtLatitude.Text     = result.Latitude.ToString("F4",  culture);
+        txtLongitude.Text    = result.Longitude.ToString("F4", culture);
+
+        _settings.Location.Name      = result.ShortName;
+        _settings.Location.Latitude  = result.Latitude;
+        _settings.Location.Longitude = result.Longitude;
+
+        _configService.SaveSettings(_settings);
+
+        // ── AUSGABE ────────────────────────────────────────────
+        lblLocationDisplay.Text = _settings.Location.ToString();
     }
 
     // ── SYSTEM-TRAY ────────────────────────────────────────────
