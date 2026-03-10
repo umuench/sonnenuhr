@@ -22,6 +22,14 @@ namespace Sonnenuhr.Services;
 /// </summary>
 public class WallpaperGeneratorService
 {
+    // ── KONSTANTEN ─────────────────────────────────────────────
+
+    /// <summary>Dauer der Ein-/Ausblendung in Minuten um Sonnenauf-/untergang.</summary>
+    private const float FadeDurationMinutes = 30f;
+
+    /// <summary>Minimaler Alphawert bei Nacht (Geisteruhr, 8 % sichtbar).</summary>
+    private const float NightAlpha = 0.08f;
+
     // ── FELDER ─────────────────────────────────────────────────
 
     private readonly WallpaperConfig _config;
@@ -61,7 +69,7 @@ public class WallpaperGeneratorService
             throw new ArgumentException("Ausgabepfad darf nicht leer sein.", nameof(outputPath));
 
         // ── VERARBEITUNG ───────────────────────────────────────
-        using var bitmap  = new Bitmap(_config.ImageWidth, _config.ImageHeight, PixelFormat.Format32bppArgb);
+        using var bitmap   = new Bitmap(_config.ImageWidth, _config.ImageHeight, PixelFormat.Format32bppArgb);
         using var graphics = Graphics.FromImage(bitmap);
 
         ConfigureGraphics(graphics);
@@ -71,14 +79,26 @@ public class WallpaperGeneratorService
         var center = new PointF(_config.ImageWidth / 2f, _config.ImageHeight / 2f);
         float radius = Math.Min(_config.ImageWidth, _config.ImageHeight) * 0.38f;
 
-        // Einzelne Zeichenschichten von unten nach oben aufbauen
-        DrawDialPlate(graphics, center, radius);
-        DrawHourLines(graphics, center, radius, solarData, location, timeZone);
-        DrawGnomon(graphics, center, radius, location.Latitude);
-        DrawCurrentTimeIndicator(graphics, center, radius, solarData, location, currentTime, timeZone);
+        // Alpha-Faktor berechnen: Einblenden nach Sonnenaufgang, Ausblenden vor Sonnenuntergang
+        DateTime localSunrise = solarData.GetLocalSunrise(timeZone);
+        DateTime localSunset  = solarData.GetLocalSunset(timeZone);
+        float clockAlpha = CalculateDaylightAlpha(currentTime, localSunrise, localSunset);
+
+        // Alle Uhr-Elemente auf eine transparente Zwischenfläche zeichnen
+        using var clockBitmap   = new Bitmap(_config.ImageWidth, _config.ImageHeight, PixelFormat.Format32bppArgb);
+        using var clockGraphics = Graphics.FromImage(clockBitmap);
+        ConfigureGraphics(clockGraphics);
+
+        DrawDialPlate(clockGraphics, center, radius);
+        DrawHourLines(clockGraphics, center, radius, solarData, location, timeZone);
+        DrawGnomon(clockGraphics, center, radius, location.Latitude);
+        DrawCurrentTimeIndicator(clockGraphics, center, radius, solarData, location, currentTime, timeZone);
 
         if (_config.ShowLocationName || _config.ShowSunriseSunset || _config.ShowCurrentTime)
-            DrawInfoPanel(graphics, solarData, location, currentTime, timeZone);
+            DrawInfoPanel(clockGraphics, solarData, location, currentTime, timeZone);
+
+        // Zwischenfläche mit berechneter Transparenz auf Hauptbild komponieren
+        CompositeBitmapWithAlpha(graphics, clockBitmap, clockAlpha);
 
         // ── AUSGABE ────────────────────────────────────────────
         string? directory = Path.GetDirectoryName(outputPath);
@@ -343,6 +363,78 @@ public class WallpaperGeneratorService
     }
 
     // ── HILFSMETHODEN ─────────────────────────────────────────
+
+    /// <summary>
+    /// Berechnet den Deckkraft-Faktor der Uhr (0 = unsichtbar, 1 = vollständig sichtbar)
+    /// auf Basis der aktuellen Zeit relativ zu Sonnenaufgang und -untergang.
+    /// </summary>
+    /// <remarks>
+    /// Zeitstrahl:
+    /// ←─ Nacht ─→←─ Fade-In ─→←── voller Tag ──→←─ Fade-Out ─→←─ Nacht ─→
+    ///            ↑           ↑                  ↑              ↑
+    ///        sunrise-30min  sunrise      sunset-30min       sunset
+    /// </remarks>
+    private static float CalculateDaylightAlpha(
+        DateTime currentTime,
+        DateTime sunrise,
+        DateTime sunset)
+    {
+        // ── EINGABE ────────────────────────────────────────────
+        var fadeDuration = TimeSpan.FromMinutes(FadeDurationMinutes);
+
+        DateTime fadeInStart  = sunrise - fadeDuration;   // Start Einblenden (30 min vor Aufgang)
+        DateTime fadeOutStart = sunset  - fadeDuration;   // Start Ausblenden (30 min vor Untergang)
+
+        // ── VERARBEITUNG ───────────────────────────────────────
+
+        // Tief in der Nacht
+        if (currentTime <= fadeInStart || currentTime >= sunset + fadeDuration)
+            return NightAlpha;
+
+        // Einblenden: fadeInStart → sunrise (NightAlpha → 1.0)
+        if (currentTime < sunrise)
+        {
+            double progress = (currentTime - fadeInStart).TotalMinutes / FadeDurationMinutes;
+            return NightAlpha + (1f - NightAlpha) * (float)Math.Clamp(progress, 0.0, 1.0);
+        }
+
+        // Ausblenden: fadeOutStart → sunset (1.0 → NightAlpha)
+        if (currentTime >= fadeOutStart)
+        {
+            double progress = (sunset - currentTime).TotalMinutes / FadeDurationMinutes;
+            return NightAlpha + (1f - NightAlpha) * (float)Math.Clamp(progress, 0.0, 1.0);
+        }
+
+        // ── AUSGABE ────────────────────────────────────────────
+        return 1.0f; // Voller Tag: vollständig sichtbar
+    }
+
+    /// <summary>
+    /// Komponiert eine Quell-Bitmap mit dem angegebenen Alpha-Faktor
+    /// auf die Ziel-Graphics-Fläche (Multiply auf den Alpha-Kanal).
+    /// </summary>
+    /// <param name="g">Ziel-Graphics.</param>
+    /// <param name="source">Quell-Bitmap (32bpp ARGB).</param>
+    /// <param name="alpha">Deckkraft-Faktor 0.0–1.0.</param>
+    private static void CompositeBitmapWithAlpha(Graphics g, Bitmap source, float alpha)
+    {
+        // ── EINGABE ────────────────────────────────────────────
+        if (alpha <= 0f) return;
+        if (alpha >= 1f) { g.DrawImage(source, 0, 0); return; }
+
+        // ── VERARBEITUNG ───────────────────────────────────────
+        // ColorMatrix.Matrix33 skaliert den Alpha-Kanal aller Pixel
+        var colorMatrix = new ColorMatrix { Matrix33 = alpha };
+        using var imageAttribs = new ImageAttributes();
+        imageAttribs.SetColorMatrix(colorMatrix, ColorMatrixFlag.Default, ColorAdjustType.Bitmap);
+
+        var destRect = new Rectangle(0, 0, source.Width, source.Height);
+
+        // ── AUSGABE ────────────────────────────────────────────
+        g.DrawImage(source, destRect,
+                    0, 0, source.Width, source.Height,
+                    GraphicsUnit.Pixel, imageAttribs);
+    }
 
     /// <summary>Konvertiert eine Ganzzahl in eine römische Zifferndarstellung (I–XII).</summary>
     private static string ToRoman(int number)
