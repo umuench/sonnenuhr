@@ -92,10 +92,20 @@ public class WallpaperGeneratorService
         using var clockGraphics = Graphics.FromImage(clockBitmap);
         ConfigureGraphics(clockGraphics);
 
-        DrawDialPlate(clockGraphics, center, radius);
-        DrawHourLines(clockGraphics, center, radius, solarData, location, timeZone);
-        DrawGnomon(clockGraphics, center, radius, location.Latitude);
-        DrawCurrentTimeIndicator(clockGraphics, center, radius, solarData, location, currentTime, timeZone);
+        SundialOrientationMode resolvedOrientation =
+            SundialCalculator.ResolveOrientationMode(location.Latitude, _config.OrientationMode);
+        SolarPosition solarPosition = SundialCalculator.CalculateSolarPosition(currentTime, location, timeZone);
+
+        DrawPerspectiveSundial(
+            clockGraphics,
+            center,
+            radius,
+            solarData,
+            location,
+            currentTime,
+            timeZone,
+            resolvedOrientation,
+            solarPosition);
 
         if (_config.ShowLocationName || _config.ShowSunriseSunset || _config.ShowCurrentTime)
             DrawInfoPanel(clockGraphics, solarData, location, currentTime, timeZone);
@@ -548,6 +558,230 @@ public class WallpaperGeneratorService
             (int)(c.G * factor),
             (int)(c.B * factor));
     }
+
+    private readonly record struct DialProjection(
+        PointF Center,
+        float RadiusX,
+        float RadiusY,
+        float DepthScale,
+        SundialOrientationMode Orientation);
+
+    /// <summary>
+    /// Zeichnet die physikalisch plausiblere 3D-Sonnenuhr: elliptische Platte,
+    /// Tagessektor, Stundenlinien, geneigten Gnomon und Schatten aus Azimut/Höhe.
+    /// </summary>
+    private void DrawPerspectiveSundial(
+        Graphics               g,
+        PointF                 center,
+        float                  radius,
+        SolarData              solarData,
+        Location               location,
+        DateTime               currentTime,
+        TimeZoneInfo           timeZone,
+        SundialOrientationMode orientation,
+        SolarPosition          solarPosition)
+    {
+        // ── EINGABE ────────────────────────────────────────────
+        float rx = radius;
+        float ry = _config.EnablePerspectiveDial ? radius * 0.57f : radius;
+        float depthScale = _config.EnablePerspectiveDial ? 0.95f : 0.35f;
+
+        var projection = new DialProjection(center, rx, ry, depthScale, orientation);
+        var plateRect = new RectangleF(center.X - rx, center.Y - ry, rx * 2f, ry * 2f);
+
+        // Tagessektor (physikalisch relevante Hemisphäre): Sonnenseite nach Hemisphäre
+        bool sunSouthInPhysics = location.Latitude >= 0.0;
+        bool rotatedByOrientation = orientation == SundialOrientationMode.SouthUp;
+        bool daySectorBottom = sunSouthInPhysics ^ rotatedByOrientation;
+
+        // ── VERARBEITUNG ───────────────────────────────────────
+        DrawDialPlate3D(g, plateRect, daySectorBottom);
+
+        using var platePath = new GraphicsPath();
+        platePath.AddEllipse(plateRect);
+
+        Region previousClip = g.Clip;
+        g.SetClip(platePath, CombineMode.Intersect);
+
+        DrawProjectedHourLines(g, projection, solarData, location, timeZone, daySectorBottom);
+        DrawProjectedGnomonAndShadow(g, projection, location, solarPosition);
+
+        g.Clip = previousClip;
+
+        // ── AUSGABE ────────────────────────────────────────────
+        // Zeichnung direkt auf dem Clock-Layer.
+    }
+
+    /// <summary>
+    /// Zeichnet die perspektivische Sonnenuhrplatte mit Bevel und hervorgehobener Tages-Hemisphäre.
+    /// </summary>
+    private void DrawDialPlate3D(Graphics g, RectangleF plateRect, bool daySectorBottom)
+    {
+        // ── VERARBEITUNG ───────────────────────────────────────
+        using var materialBrush = new LinearGradientBrush(
+            new PointF(plateRect.Left, plateRect.Top),
+            new PointF(plateRect.Left, plateRect.Bottom),
+            Color.FromArgb(62, _config.PrimaryColor),
+            Color.FromArgb(30, _config.PrimaryColor));
+        g.FillEllipse(materialBrush, plateRect);
+
+        // Leichte Materialtextur
+        using (var texturePen = new Pen(Color.FromArgb(18, _config.SecondaryColor), 1f))
+        {
+            for (int i = 0; i < 28; i++)
+            {
+                float y = plateRect.Top + (i / 27f) * plateRect.Height;
+                g.DrawLine(texturePen, plateRect.Left + 6, y, plateRect.Right - 6, y);
+            }
+        }
+
+        // Physikalisch relevanter Tagessektor als Halbellipse
+        int startAngle = daySectorBottom ? 0 : 180;
+        using var dayBrush = new SolidBrush(Color.FromArgb(46, _config.AccentColor));
+        g.FillPie(dayBrush, plateRect, startAngle, 180);
+
+        // Trennlinie der Hemisphären (Ost-West-Linie)
+        using var hemispherePen = new Pen(Color.FromArgb(95, _config.SecondaryColor), 1.2f);
+        float midY = plateRect.Top + plateRect.Height / 2f;
+        g.DrawLine(hemispherePen, plateRect.Left + 5f, midY, plateRect.Right - 5f, midY);
+
+        // Randfase
+        using var outerPen = new Pen(Color.FromArgb(210, _config.PrimaryColor), 2.6f);
+        using var innerPen = new Pen(Color.FromArgb(90, _config.SecondaryColor), 1.0f);
+        g.DrawEllipse(outerPen, plateRect);
+        var inner = RectangleF.Inflate(plateRect, -7f, -4f);
+        g.DrawEllipse(innerPen, inner);
+    }
+
+    /// <summary>
+    /// Zeichnet Stundenlinien und Beschriftung auf die perspektivische Platte.
+    /// </summary>
+    private void DrawProjectedHourLines(
+        Graphics        g,
+        DialProjection  projection,
+        SolarData       solarData,
+        Location        location,
+        TimeZoneInfo    timeZone,
+        bool            daySectorBottom)
+    {
+        // ── EINGABE ────────────────────────────────────────────
+        var hourLines = SundialCalculator.CalculateAllHourLines(location.Latitude);
+        DateTime solarNoon = solarData.GetLocalSolarNoon(timeZone);
+        using var linePen = new Pen(Color.FromArgb(180, _config.SecondaryColor), 1.4f);
+        using var labelFont = new Font(_config.FontFamily, _config.FontSizeBase * 0.72f, FontStyle.Regular);
+        using var labelBrush = new SolidBrush(Color.FromArgb(185, _config.SecondaryColor));
+
+        // ── VERARBEITUNG ───────────────────────────────────────
+        foreach (var (offset, angleDeg) in hourLines)
+        {
+            // Stundenlinien-Formel liefert Winkel relativ zur Mittagslinie (0°=Süd).
+            double bearingDeg = 180.0 + angleDeg; // 0°=Nord
+            double bearingRad = SundialCalculator.DegreesToRadians(bearingDeg);
+
+            float localX = (float)Math.Sin(bearingRad);
+            float localY = (float)-Math.Cos(bearingRad);
+
+            (float viewX, float viewY) = ApplyOrientation(localX, localY, projection.Orientation);
+
+            bool onBottomHalf = viewY > 0;
+            if (daySectorBottom != onBottomHalf)
+                continue;
+
+            PointF p2 = ProjectOnDialPlane(
+                viewX * projection.RadiusX * 0.90f,
+                viewY * projection.RadiusX * 0.90f,
+                projection);
+            g.DrawLine(linePen, projection.Center, p2);
+
+            string label = _config.UseRomanNumerals
+                ? ToRoman(solarNoon.AddHours(offset).Hour)
+                : SundialCalculator.GetHourLabel(offset, solarNoon);
+
+            PointF labelPoint = ProjectOnDialPlane(
+                viewX * projection.RadiusX * 0.98f,
+                viewY * projection.RadiusX * 0.98f,
+                projection);
+            var size = g.MeasureString(label, labelFont);
+            g.DrawString(label, labelFont, labelBrush,
+                labelPoint.X - size.Width / 2f,
+                labelPoint.Y - size.Height / 2f);
+        }
+    }
+
+    /// <summary>
+    /// Zeichnet den geneigten Gnomon und dessen Schatten basierend auf Azimut und Höhe.
+    /// </summary>
+    private void DrawProjectedGnomonAndShadow(
+        Graphics       g,
+        DialProjection projection,
+        Location       location,
+        SolarPosition  solarPosition)
+    {
+        // ── EINGABE ────────────────────────────────────────────
+        float gnomonLength = projection.RadiusX * 0.44f;
+        double latitudeAbsRad = SundialCalculator.DegreesToRadians(Math.Clamp(Math.Abs(location.Latitude), 1.0, 89.0));
+
+        // Stilus zeigt zum Pol: NH -> Nord, SH -> Süd.
+        float poleDirY = location.Latitude >= 0.0 ? -1f : 1f;
+        if (projection.Orientation == SundialOrientationMode.SouthUp)
+            poleDirY *= -1f;
+
+        float gnomonHorizontal = gnomonLength * (float)Math.Cos(latitudeAbsRad);
+        float gnomonVertical = gnomonLength * (float)Math.Sin(latitudeAbsRad);
+
+        PointF basePoint = projection.Center;
+        PointF tipPoint = Project3DOnDialPlane(0f, poleDirY * gnomonHorizontal, gnomonVertical, projection);
+
+        // ── VERARBEITUNG ───────────────────────────────────────
+        // Kontaktschatten des Gnomons
+        using (var contactShadowPen = new Pen(Color.FromArgb(70, 0, 0, 0), 6f))
+            g.DrawLine(contactShadowPen, basePoint.X + 1.5f, basePoint.Y + 2f, tipPoint.X + 1.5f, tipPoint.Y + 2f);
+
+        using (var gnomonPen = new Pen(_config.PrimaryColor, 3.4f) { EndCap = LineCap.Round, StartCap = LineCap.Round })
+            g.DrawLine(gnomonPen, basePoint, tipPoint);
+
+        // Schatten nur bei Sonne über Horizont
+        if (_config.ShowCurrentHourMarker && solarPosition.IsAboveHorizon)
+        {
+            double? shadowFactor = SundialCalculator.CalculateShadowLengthFactor(solarPosition.AltitudeDegrees);
+            if (shadowFactor is not null)
+            {
+                float shadowLength = Math.Min(projection.RadiusX * 1.25f, (float)(gnomonVertical * shadowFactor.Value));
+                double shadowBearingRad = SundialCalculator.DegreesToRadians(solarPosition.ShadowBearingDegrees);
+
+                float sx = (float)Math.Sin(shadowBearingRad) * shadowLength;
+                float sy = (float)-Math.Cos(shadowBearingRad) * shadowLength;
+                (float viewX, float viewY) = ApplyOrientation(sx, sy, projection.Orientation);
+
+                PointF shadowEnd = ProjectOnDialPlane(viewX, viewY, projection);
+
+                using var glowPen = new Pen(Color.FromArgb(60, _config.AccentColor), 10f);
+                using var shadowPen = new Pen(Color.FromArgb(230, _config.AccentColor), 3.4f)
+                {
+                    EndCap = LineCap.Round
+                };
+                g.DrawLine(glowPen, basePoint, shadowEnd);
+                g.DrawLine(shadowPen, basePoint, shadowEnd);
+            }
+        }
+
+        float baseDot = projection.RadiusX * 0.022f;
+        using var baseBrush = new SolidBrush(_config.PrimaryColor);
+        g.FillEllipse(baseBrush, basePoint.X - baseDot, basePoint.Y - baseDot, baseDot * 2f, baseDot * 2f);
+    }
+
+    private static (float x, float y) ApplyOrientation(float x, float y, SundialOrientationMode orientation) =>
+        orientation == SundialOrientationMode.SouthUp ? (-x, -y) : (x, y);
+
+    private static PointF ProjectOnDialPlane(float x, float y, DialProjection projection) =>
+        new(
+            projection.Center.X + x,
+            projection.Center.Y + y * (projection.RadiusY / projection.RadiusX));
+
+    private static PointF Project3DOnDialPlane(float x, float y, float z, DialProjection projection) =>
+        new(
+            projection.Center.X + x,
+            projection.Center.Y + y * (projection.RadiusY / projection.RadiusX) - z * projection.DepthScale);
 
     /// <summary>Zeichnet das kreisförmige Ziffernblatt der Sonnenuhr.</summary>
     private void DrawDialPlate(Graphics g, PointF center, float radius)

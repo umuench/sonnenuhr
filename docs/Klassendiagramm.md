@@ -273,3 +273,53 @@ Die Klasse `GeocodingService` kapselt die Kommunikationslogik mit der OpenStreet
 ---
 
 *Dokument erstellt von: Uwe Markus Münch | Breihof IT GmbH | IHK Rhein-Neckar | 01.07.2026*
+
+---
+
+## Ergänzung Meilenstein 1: 3D-Sonnenuhr und Ausrichtungslogik
+
+```mermaid
+classDiagram
+    direction TB
+
+    class SundialOrientationMode {
+        <<enum>>
+        AutomaticByLocation
+        NorthUp
+        SouthUp
+    }
+
+    class SolarPosition {
+        +AltitudeDegrees : double
+        +AzimuthDegrees : double
+        +IsAboveHorizon : bool
+        +ShadowBearingDegrees : double
+    }
+
+    class WallpaperConfig {
+        +OrientationMode : SundialOrientationMode
+        +EnablePerspectiveDial : bool
+    }
+
+    class SundialCalculator {
+        <<static>>
+        +ResolveOrientationMode(latitude : double, selected : SundialOrientationMode) SundialOrientationMode
+        +GetOrientationReasonText(latitude : double, selected : SundialOrientationMode) string
+        +CalculateSolarPosition(time : DateTime, location : Location, tz : TimeZoneInfo) SolarPosition
+        +CalculateSolarPosition(time : DateTime, lat : double, lon : double, tz : TimeZoneInfo) SolarPosition
+        +CalculateShadowLengthFactor(altitude : double) double?
+    }
+
+    class WallpaperGeneratorService {
+        -DrawPerspectiveSundial(...) void
+        -DrawDialPlate3D(...) void
+        -DrawProjectedHourLines(...) void
+        -DrawProjectedGnomonAndShadow(...) void
+    }
+
+    WallpaperConfig --> SundialOrientationMode : verwendet
+    SundialCalculator --> SolarPosition : berechnet
+    WallpaperGeneratorService --> SundialCalculator : nutzt Solarposition
+```
+
+Die Erweiterung bleibt in der bestehenden Architektur (`Models`, `Services`, `Forms`) gekapselt. Der astronomische Kern liegt in `SundialCalculator`; die visuelle Perspektivprojektion bleibt im `WallpaperGeneratorService`.

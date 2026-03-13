@@ -134,6 +134,7 @@ Die folgenden Anforderungen **können** umgesetzt werden, sofern Zeit und Ressou
 | K-07 | **Anzeige von Uhrzeit** | Die aktuelle Uhrzeit kann optional im Wallpaper angezeigt werden. |
 | K-08 | **Stadtsuche via Geocoding-API** | Statt manueller Koordinateneingabe kann der Benutzer einen Stadtnamen suchen. Die Koordinaten werden über die OpenStreetMap Nominatim API automatisch ermittelt. Bei mehreren gleichnamigen Orten öffnet sich ein Auswahldialog. |
 | K-09 | **Animierter Hintergrund** | Der Hintergrund des generierten Wallpapers kann dynamisch angezeigt werden und sich in Abhängigkeit von der aktuellen Tageszeit, dem Standort sowie den berechneten Sonnenauf- und -untergangszeiten verändern. Dabei werden ein tageszeit­abhängiger Himmelsgradient (7 Farbstützpunkte von tiefer Nacht bis Tageshimmel), ein deterministischer Sternenhimmel bei Nacht, ein orangefarbenes Horizontglühen nahe dem Auf-/Untergang, eine Sonne und ein Mond auf Sinusbogen-Trajektorie sowie eine astronomisch korrekt berechnete Mondphasendarstellung umgesetzt. |
+| K-10 | **Physikalisch korrektere 3D-Sonnenuhr** | Die Sonnenuhr kann als perspektivische Ellipsenplatte dargestellt werden. Die Ausrichtung wird benutzerfreundlich (Automatisch/Nord oben/Süd oben) geführt. Sonnenazimut und Sonnenhöhe werden lokal berechnet; daraus werden Gnomon-Ausrichtung sowie Schattenrichtung und Schattenlänge physikalisch plausibel erzeugt. |
 
 ### 3.4 Abgrenzungskriterien
 

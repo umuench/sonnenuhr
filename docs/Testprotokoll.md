@@ -44,9 +44,10 @@
 | Integrationstests GeocodingService | 4 | 0 | 0 | 4 |
 | UI-Tests Stadtsuche | 1 | 0 | 0 | 1 |
 | Integrationstests Animierter Hintergrund | 5 | 0 | 0 | 5 |
-| **Gesamt** | **30** | **11** | **0** | **19** |
+| Automatisierte Unit-Tests Meilenstein 1 | 30 | 30 | 0 | 0 |
+| **Gesamt** | **60** | **41** | **0** | **19** |
 
-> **Hinweis:** Integrationstests und UI-Tests sind zum Zeitpunkt der Erstellung dieses Protokolls noch nicht durchgeführt worden. Sie werden im Rahmen der Testphase (Phase 4, 17.08. – 24.08.2026) abgeschlossen. Die Testfälle TP-25 bis TP-29 decken das neu implementierte Feature „Animierter Hintergrund" ab.
+> **Hinweis:** Integrationstests und UI-Tests sind teilweise noch offen. Die automatisierten Unit-Tests für Meilenstein 1 wurden vollständig durchgeführt und bestanden (30/30).
 
 ---
 
@@ -568,7 +569,56 @@
 
 ---
 
-## 10. Fehlerbeschreibungen
+## 10. Automatisierte Unit-Tests: Meilenstein 1 (durchgeführt)
+
+### TP-30: Orientierung automatisch nach Hemisphäre
+
+| Feld | Inhalt |
+|------|--------|
+| **Test-ID** | TP-30 |
+| **Komponente** | `Services.SundialCalculator` |
+| **Testfall** | `ResolveOrientationMode()` liefert bei automatischer Wahl auf Nordhalbkugel `NorthUp` und auf Südhalbkugel `SouthUp` |
+| **Status** | ✅ Bestanden |
+
+### TP-31: Manuelle Ausrichtung überschreibt Automatik
+
+| Feld | Inhalt |
+|------|--------|
+| **Test-ID** | TP-31 |
+| **Komponente** | `Services.SundialCalculator` |
+| **Testfall** | Manuelle Auswahl `NorthUp`/`SouthUp` bleibt unabhängig vom Breitengrad erhalten |
+| **Status** | ✅ Bestanden |
+
+### TP-32: Sonnenposition plausibel (Sommermittag Mannheim)
+
+| Feld | Inhalt |
+|------|--------|
+| **Test-ID** | TP-32 |
+| **Komponente** | `Services.SundialCalculator` |
+| **Testfall** | `CalculateSolarPosition()` liefert mittags positive Höhe und südlichen Azimutbereich |
+| **Status** | ✅ Bestanden |
+
+### TP-33: Sonne unter Horizont in der Nacht
+
+| Feld | Inhalt |
+|------|--------|
+| **Test-ID** | TP-33 |
+| **Komponente** | `Services.SundialCalculator` |
+| **Testfall** | `CalculateSolarPosition()` liefert nachts `IsAboveHorizon = false` |
+| **Status** | ✅ Bestanden |
+
+### TP-34: Schattenlänge reagiert korrekt auf Sonnenhöhe
+
+| Feld | Inhalt |
+|------|--------|
+| **Test-ID** | TP-34 |
+| **Komponente** | `Services.SundialCalculator` |
+| **Testfall** | `CalculateShadowLengthFactor()` wird bei tiefer Sonne größer und bei unterhalb des Horizonts `null` |
+| **Status** | ✅ Bestanden |
+
+---
+
+## 11. Fehlerbeschreibungen
 
 Zum Zeitpunkt der Erstellung dieses Protokolls (01.07.2026) sind **keine bekannten Fehler** in der Anwendung dokumentiert. Gefundene Fehler während der Testphase werden hier nachgetragen.
 

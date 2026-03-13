@@ -60,6 +60,17 @@ public class WallpaperConfig
     /// <summary>Zeigt römische Ziffern statt arabischer Ziffern an.</summary>
     public bool UseRomanNumerals { get; set; } = false;
 
+    /// <summary>
+    /// Legt fest, wie die Himmelsrichtungen auf der Sonnenuhr dargestellt werden.
+    /// </summary>
+    public SundialOrientationMode OrientationMode { get; set; } =
+        SundialOrientationMode.AutomaticByLocation;
+
+    /// <summary>
+    /// Aktiviert die perspektivische 3D-Darstellung der Sonnenuhrplatte.
+    /// </summary>
+    public bool EnablePerspectiveDial { get; set; } = true;
+
     // ── VERARBEITUNGS-HILFSMETHODEN ────────────────────────────
 
     /// <summary>Gibt die Hintergrundfarbe als <see cref="Color"/> zurück.</summary>

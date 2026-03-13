@@ -43,6 +43,7 @@ Projekterfolgs und eine Reflexion über Abweichungen.
 | F-11 | Autostart mit Windows | ✅ Vollständig implementiert | Keine | `HKCU\...\Run`-Registry-Eintrag, togglebar in UI |
 | F-12 | **Stadtsuche mit automatischer Koordinatenübernahme** | ✅ Implementiert (Mehrwert) | Positiv | Nominatim API (OpenStreetMap) – erleichtert Standortkonfiguration erheblich; kein API-Key erforderlich |
 | F-13 | **Animierter Hintergrund** | ✅ Implementiert (Mehrwert) | Positiv | Tageszeit­abhängiger Himmelsgradient, Sternenhimmel, Horizontglühen, Sonne/Mond auf Bogenbahn, astronomisch korrekte Mondphasen; als optionale Anforderung K-09 ursprünglich geplant, vollständig umgesetzt |
+| F-14 | **3D-Sonnenuhr mit physikalischem Schatten** | ✅ Implementiert (Meilenstein 1) | Positiv | Perspektivische Ellipsenplatte, Tages-Hemisphäre, orientierungsabhängige Ansicht (Automatik/Nord oben/Süd oben), Schattenrichtung aus Sonnenazimut und Schattenlänge aus Sonnenhöhe |
 
 ### 2.2 Qualitative Ziele
 
@@ -56,7 +57,7 @@ Projekterfolgs und eine Reflexion über Abweichungen.
 | Q-06 | Ressourcen-Management | ✅ Vollständig implementiert | Keine | IDisposable für HttpClient, `using`-Statements für GDI-Objekte |
 | Q-07 | Async/Await Pattern | ✅ Vollständig implementiert | Keine | API-Aufrufe vollständig asynchron |
 | Q-08 | Windows 11 Design-Guidelines | ✅ Weitgehend eingehalten | Geringfügig | Dunkles Custom-Theme statt Standard-Windows-UI (bewusste Designentscheidung) |
-| Q-09 | Unit-Tests | ✅ 24 Tests, alle bestanden | Keine | SundialCalculatorTests (18), LocationTests (6) |
+| Q-09 | Unit-Tests | ✅ 30 Tests, alle bestanden | Keine | SundialCalculatorTests erweitert (Orientierung, Sonnenposition, Schattenfaktor), LocationTests unverändert |
 
 ### 2.3 Technische Ziele
 

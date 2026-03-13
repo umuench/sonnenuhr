@@ -11,6 +11,7 @@
 
 using System.Drawing;
 using Sonnenuhr.Models;
+using Sonnenuhr.Services;
 
 namespace Sonnenuhr.Forms;
 
@@ -38,6 +39,9 @@ public class ConfigurationForm : Form
     private readonly System.Windows.Forms.CheckBox      chkTwilight    = new();
     private readonly System.Windows.Forms.CheckBox      chkTimeMarker  = new();
     private readonly System.Windows.Forms.CheckBox      chkRoman       = new();
+    private readonly System.Windows.Forms.ComboBox      cmbOrientation = new();
+    private readonly System.Windows.Forms.Label         lblOrientationInfo = new();
+    private readonly System.Windows.Forms.CheckBox      chkPerspectiveDial = new();
     private readonly System.Windows.Forms.Button        btnOk          = new();
     private readonly System.Windows.Forms.Button        btnCancel      = new();
 
@@ -70,7 +74,7 @@ public class ConfigurationForm : Form
     private void InitializeLayout()
     {
         Text          = "⚙  Darstellungs-Einstellungen";
-        Size          = new System.Drawing.Size(440, 560);
+        Size          = new System.Drawing.Size(440, 650);
         MinimumSize   = Size;
         MaximumSize   = Size;
         StartPosition = FormStartPosition.CenterParent;
@@ -121,6 +125,32 @@ public class ConfigurationForm : Form
         AddCheckBox(chkTwilight,    "Dämmerungslinien anzeigen",         ref y);
         AddCheckBox(chkTimeMarker,  "Aktuellen Stundenzeiger anzeigen",  ref y);
         AddCheckBox(chkRoman,       "Römische Ziffern verwenden",        ref y);
+        AddCheckBox(chkPerspectiveDial, "Perspektivische 3D-Sonnenuhr verwenden", ref y);
+
+        y += 8;
+        AddSectionLabel("Ausrichtung der Sonnenuhr", ref y);
+
+        var lblOrientation = AddLabel("Ausrichtung:", 20, y, 120);
+        cmbOrientation.Location = new System.Drawing.Point(145, y);
+        cmbOrientation.Size     = new System.Drawing.Size(210, 23);
+        cmbOrientation.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+        cmbOrientation.BackColor = System.Drawing.Color.FromArgb(15, 15, 40);
+        cmbOrientation.ForeColor = System.Drawing.Color.FromArgb(226, 185, 111);
+        cmbOrientation.Items.AddRange(new object[]
+        {
+            "Automatisch nach Standort",
+            "Nord oben",
+            "Süd oben"
+        });
+        cmbOrientation.SelectedIndexChanged += (_, _) => UpdateOrientationInfoText();
+        Controls.Add(cmbOrientation);
+        y += 30;
+
+        lblOrientationInfo.Location = new System.Drawing.Point(20, y);
+        lblOrientationInfo.Size     = new System.Drawing.Size(390, 48);
+        lblOrientationInfo.ForeColor = System.Drawing.Color.FromArgb(200, 220, 200);
+        lblOrientationInfo.Font      = new System.Drawing.Font("Segoe UI", 8.7f, System.Drawing.FontStyle.Italic);
+        Controls.Add(lblOrientationInfo);
 
         // Schaltflächen – readonly-Felder nur konfigurieren, nicht neu erstellen
         y = ClientSize.Height - 52;
@@ -165,6 +195,13 @@ public class ConfigurationForm : Form
         _settings.WallpaperConfig.ShowTwilightLines   = chkTwilight.Checked;
         _settings.WallpaperConfig.ShowCurrentHourMarker = chkTimeMarker.Checked;
         _settings.WallpaperConfig.UseRomanNumerals    = chkRoman.Checked;
+        _settings.WallpaperConfig.EnablePerspectiveDial = chkPerspectiveDial.Checked;
+        _settings.WallpaperConfig.OrientationMode      = cmbOrientation.SelectedIndex switch
+        {
+            1 => SundialOrientationMode.NorthUp,
+            2 => SundialOrientationMode.SouthUp,
+            _ => SundialOrientationMode.AutomaticByLocation
+        };
 
         // ── AUSGABE ────────────────────────────────────────────
         DialogResult = DialogResult.OK;
@@ -190,6 +227,31 @@ public class ConfigurationForm : Form
         chkTwilight.Checked     = cfg.ShowTwilightLines;
         chkTimeMarker.Checked   = cfg.ShowCurrentHourMarker;
         chkRoman.Checked        = cfg.UseRomanNumerals;
+        chkPerspectiveDial.Checked = cfg.EnablePerspectiveDial;
+        cmbOrientation.SelectedIndex = cfg.OrientationMode switch
+        {
+            SundialOrientationMode.NorthUp => 1,
+            SundialOrientationMode.SouthUp => 2,
+            _ => 0
+        };
+        UpdateOrientationInfoText();
+    }
+
+    private void UpdateOrientationInfoText()
+    {
+        SundialOrientationMode selected = cmbOrientation.SelectedIndex switch
+        {
+            1 => SundialOrientationMode.NorthUp,
+            2 => SundialOrientationMode.SouthUp,
+            _ => SundialOrientationMode.AutomaticByLocation
+        };
+
+        SundialOrientationMode resolved =
+            SundialCalculator.ResolveOrientationMode(_settings.Location.Latitude, selected);
+        string resolvedText = resolved == SundialOrientationMode.NorthUp ? "Nord oben" : "Süd oben";
+        string reason = SundialCalculator.GetOrientationReasonText(_settings.Location.Latitude, selected);
+
+        lblOrientationInfo.Text = $"Aktuell wirksam: {resolvedText}\nBegründung: {reason}";
     }
 
     // ── UI-HILFSFABRIKEN ───────────────────────────────────────

@@ -384,4 +384,26 @@ flowchart TD
 
 ---
 
+## 6. Workflow: 3D-Sonnenuhr-Projektion (Meilenstein 1)
+
+```mermaid
+flowchart TD
+    A([Start: DrawPerspectiveSundial]) --> B[Orientierung auflösen\nAutomatic/Nord oben/Süd oben]
+    B --> C[SolarPosition lokal berechnen\nSonnenhöhe + Sonnenazimut]
+    C --> D[Dial als Ellipse zeichnen\nMaterial + Bevel]
+    D --> E[Tages-Hemisphäre markieren\nHalbsektor statt Vollkreisfokus]
+    E --> F[Stundenlinien auf Plattenebene berechnen]
+    F --> G[Ansichtstransformation anwenden\n(nur visuell, nicht physikalisch)]
+    G --> H[Gnomon geneigt nach Breite zeichnen]
+    H --> I{Sonne über Horizont?}
+    I -- Ja --> J[Schattenrichtung = Azimut + 180°]
+    J --> K[Schattenlänge = f(Sonnenhöhe)\n1/tan(Altitude)]
+    K --> L[Schatten auf Platte projizieren]
+    I -- Nein --> M[Kein Schatten zeichnen]
+    L --> N([Ende])
+    M --> N
+```
+
+---
+
 *Dokument erstellt von: Uwe Markus Münch | Breihof IT GmbH | IHK Rhein-Neckar | 01.07.2026*

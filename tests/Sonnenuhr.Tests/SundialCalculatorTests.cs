@@ -10,6 +10,7 @@
 // ============================================================
 
 using Sonnenuhr.Services;
+using Sonnenuhr.Models;
 
 namespace Sonnenuhr.Tests;
 
@@ -184,5 +185,99 @@ public class SundialCalculatorTests
         // ── EINGABE ────────────────────────────────────────────
         // ── VERARBEITUNG & AUSGABE ─────────────────────────────
         Assert.Equal(expectedDegrees, SundialCalculator.RadiansToDegrees(radians), 1e-9);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // ORIENTIERUNG
+    // ─────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void ResolveOrientationMode_Automatic_ReturnsExpectedByHemisphere()
+    {
+        // ── EINGABE ────────────────────────────────────────────
+        // ── VERARBEITUNG & AUSGABE ─────────────────────────────
+        Assert.Equal(
+            SundialOrientationMode.NorthUp,
+            SundialCalculator.ResolveOrientationMode(49.4, SundialOrientationMode.AutomaticByLocation));
+
+        Assert.Equal(
+            SundialOrientationMode.SouthUp,
+            SundialCalculator.ResolveOrientationMode(-26.2, SundialOrientationMode.AutomaticByLocation));
+    }
+
+    [Fact]
+    public void ResolveOrientationMode_ManualOverride_PersistsSelection()
+    {
+        // ── EINGABE ────────────────────────────────────────────
+        // ── VERARBEITUNG & AUSGABE ─────────────────────────────
+        Assert.Equal(
+            SundialOrientationMode.SouthUp,
+            SundialCalculator.ResolveOrientationMode(51.0, SundialOrientationMode.SouthUp));
+
+        Assert.Equal(
+            SundialOrientationMode.NorthUp,
+            SundialCalculator.ResolveOrientationMode(-33.0, SundialOrientationMode.NorthUp));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // SONNENPOSITION
+    // ─────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void CalculateSolarPosition_SummerNoonInMannheim_IsHighAndSouth()
+    {
+        // ── EINGABE ────────────────────────────────────────────
+        var location = new Location { Latitude = 49.4875, Longitude = 8.4660 };
+        var tz = TimeZoneInfo.FindSystemTimeZoneById("W. Europe Standard Time");
+        DateTime localTime = new(2026, 6, 21, 13, 15, 0);
+
+        // ── VERARBEITUNG ───────────────────────────────────────
+        SolarPosition position = SundialCalculator.CalculateSolarPosition(localTime, location, tz);
+
+        // ── AUSGABE ────────────────────────────────────────────
+        Assert.True(position.IsAboveHorizon);
+        Assert.True(position.AltitudeDegrees > 55.0, $"Altitude={position.AltitudeDegrees}");
+        Assert.InRange(position.AzimuthDegrees, 120.0, 240.0);
+    }
+
+    [Fact]
+    public void CalculateSolarPosition_NightInMannheim_IsBelowHorizon()
+    {
+        // ── EINGABE ────────────────────────────────────────────
+        var location = new Location { Latitude = 49.4875, Longitude = 8.4660 };
+        var tz = TimeZoneInfo.FindSystemTimeZoneById("W. Europe Standard Time");
+        DateTime localTime = new(2026, 6, 21, 1, 0, 0);
+
+        // ── VERARBEITUNG ───────────────────────────────────────
+        SolarPosition position = SundialCalculator.CalculateSolarPosition(localTime, location, tz);
+
+        // ── AUSGABE ────────────────────────────────────────────
+        Assert.False(position.IsAboveHorizon);
+        Assert.True(position.AltitudeDegrees < 0.0);
+    }
+
+    [Fact]
+    public void CalculateShadowLengthFactor_DecreasesWithHigherSun()
+    {
+        // ── EINGABE ────────────────────────────────────────────
+        // ── VERARBEITUNG ───────────────────────────────────────
+        double? lowSunShadow = SundialCalculator.CalculateShadowLengthFactor(15.0);
+        double? highSunShadow = SundialCalculator.CalculateShadowLengthFactor(60.0);
+
+        // ── AUSGABE ────────────────────────────────────────────
+        Assert.NotNull(lowSunShadow);
+        Assert.NotNull(highSunShadow);
+        Assert.True(lowSunShadow > highSunShadow);
+    }
+
+    [Fact]
+    public void CalculateShadowLengthFactor_BelowHorizon_ReturnsNull()
+    {
+        // ── EINGABE ────────────────────────────────────────────
+        // ── VERARBEITUNG ───────────────────────────────────────
+        double? shadowAtNight = SundialCalculator.CalculateShadowLengthFactor(-3.0);
+
+        // ── AUSGABE ────────────────────────────────────────────
+        Assert.Null(shadowAtNight);
     }
 }
