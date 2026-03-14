@@ -595,8 +595,8 @@ public class WallpaperGeneratorService
         // ── VERARBEITUNG ───────────────────────────────────────
         foreach (var (offset, angleDeg) in hourLines)
         {
-            // Winkel: Mittagslinie zeigt nach Norden auf der Karte (270° im Bildkoordinatensystem)
-            // Konvention: 0° = Süden (unten), positiv = im Uhrzeigersinn = Osten
+            // Winkel: Mittagslinie zeigt nach Norden auf der Karte (−90° im Bildkoordinatensystem)
+            // Konvention: 0° = Mittagslinie (Nord), positiv = im Uhrzeigersinn = Osten
             double lineAngleRad = SundialCalculator.DegreesToRadians(angleDeg - 90.0);
 
             float x2 = center.X + radius * 0.88f * (float)Math.Cos(lineAngleRad);
@@ -664,9 +664,14 @@ public class WallpaperGeneratorService
         // ── EINGABE ────────────────────────────────────────────
         if (!_config.ShowCurrentHourMarker) return;
 
-        DateTime solarNoon = solarData.GetLocalSolarNoon(timeZone);
+        DateTime solarNoon    = solarData.GetLocalSolarNoon(timeZone);
+        DateTime localSunrise = solarData.GetLocalSunrise(timeZone);
+        DateTime localSunset  = solarData.GetLocalSunset(timeZone);
+
         double? shadowAngle = SundialCalculator.CalculateCurrentShadowAngle(
-                                  currentTime, solarNoon, location.Latitude);
+                                  currentTime, solarNoon, location.Latitude,
+                                  sunriseLocal: localSunrise,
+                                  sunsetLocal:  localSunset);
 
         if (shadowAngle is null) return;
 
