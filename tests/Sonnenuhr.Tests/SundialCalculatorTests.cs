@@ -79,23 +79,23 @@ public class SundialCalculatorTests
     // ─────────────────────────────────────────────────────────────────────────
 
     [Fact]
-    public void CalculateAllHourLines_Returns13Entries()
+    public void CalculateAllHourLines_Returns17Entries()
     {
         // ── EINGABE ────────────────────────────────────────────
         // ── VERARBEITUNG ───────────────────────────────────────
         var hourLines = SundialCalculator.CalculateAllHourLines(MannheimLatitude);
         // ── AUSGABE ────────────────────────────────────────────
-        Assert.Equal(13, hourLines.Count); // −6 bis +6 inclusive
+        Assert.Equal(17, hourLines.Count); // −8 bis +8 inclusive
     }
 
     [Fact]
-    public void CalculateAllHourLines_ContainsOffsets_MinusSix_To_PlusSix()
+    public void CalculateAllHourLines_ContainsOffsets_MinusEight_To_PlusEight()
     {
         // ── EINGABE ────────────────────────────────────────────
         // ── VERARBEITUNG ───────────────────────────────────────
         var hourLines = SundialCalculator.CalculateAllHourLines(MannheimLatitude);
         // ── AUSGABE ────────────────────────────────────────────
-        for (int i = -6; i <= 6; i++)
+        for (int i = -8; i <= 8; i++)
             Assert.True(hourLines.ContainsKey(i), $"Offset {i} fehlt im Dictionary.");
     }
 
@@ -130,17 +130,40 @@ public class SundialCalculatorTests
     }
 
     [Fact]
-    public void CalculateCurrentShadowAngle_NightTime_ReturnsNull()
+    public void CalculateCurrentShadowAngle_NightTime_WithSunsetCheck_ReturnsNull()
     {
         // ── EINGABE ────────────────────────────────────────────
-        DateTime solarNoon   = new(2026, 7, 1, 13, 0, 0);
-        DateTime nightTime   = solarNoon.AddHours(8); // 21 Uhr – keine Sonne
+        DateTime solarNoon = new(2026, 7, 1, 13, 0, 0);
+        DateTime sunrise   = new(2026, 7, 1,  5, 20, 0);
+        DateTime sunset    = new(2026, 7, 1, 21, 30, 0);
+        DateTime nightTime = new(2026, 7, 1, 23, 0, 0); // 23 Uhr – keine Sonne
 
         // ── VERARBEITUNG ───────────────────────────────────────
         double? angle = SundialCalculator.CalculateCurrentShadowAngle(
-            nightTime, solarNoon, MannheimLatitude);
+            nightTime, solarNoon, MannheimLatitude,
+            sunriseLocal: sunrise, sunsetLocal: sunset);
 
         // ── AUSGABE ────────────────────────────────────────────
+        Assert.Null(angle);
+    }
+
+    [Fact]
+    public void CalculateCurrentShadowAngle_BeforeSunrise_ReturnsNull()
+    {
+        // ── EINGABE ────────────────────────────────────────────
+        // Winterszenario: Sonnenaufgang 08:15, aber 07:45 ist innerhalb ±6h von Mittag
+        DateTime solarNoon   = new(2026, 12, 21, 12, 15, 0);
+        DateTime sunrise     = new(2026, 12, 21,  8, 15, 0);
+        DateTime sunset      = new(2026, 12, 21, 16, 15, 0);
+        DateTime beforeDawn  = new(2026, 12, 21,  7, 45, 0); // Vor Sonnenaufgang
+
+        // ── VERARBEITUNG ───────────────────────────────────────
+        double? angle = SundialCalculator.CalculateCurrentShadowAngle(
+            beforeDawn, solarNoon, MannheimLatitude,
+            sunriseLocal: sunrise, sunsetLocal: sunset);
+
+        // ── AUSGABE ────────────────────────────────────────────
+        // Physik: Kein Schatten ohne Sonne über dem Horizont
         Assert.Null(angle);
     }
 
@@ -158,6 +181,55 @@ public class SundialCalculatorTests
         // ── AUSGABE ────────────────────────────────────────────
         Assert.NotNull(angle);
         Assert.True(angle!.Value > 0, "Nachmittags-Winkel sollte positiv sein.");
+    }
+
+    [Fact]
+    public void CalculateCurrentShadowAngle_Beyond6Hours_WithQuadrantCorrection()
+    {
+        // ── EINGABE ────────────────────────────────────────────
+        // Sommer: 7h nach Mittag, Sonne noch über Horizont
+        DateTime solarNoon = new(2026, 6, 21, 13, 20, 0);
+        DateTime sunrise   = new(2026, 6, 21,  5, 15, 0);
+        DateTime sunset    = new(2026, 6, 21, 21, 25, 0);
+        DateTime evening   = solarNoon.AddHours(7); // 20:20 Uhr
+
+        // ── VERARBEITUNG ───────────────────────────────────────
+        double? angle = SundialCalculator.CalculateCurrentShadowAngle(
+            evening, solarNoon, MannheimLatitude,
+            sunriseLocal: sunrise, sunsetLocal: sunset);
+
+        // ── AUSGABE ────────────────────────────────────────────
+        // Schatten sollte jenseits der Ost-West-Linie liegen (>90°)
+        Assert.NotNull(angle);
+        Assert.True(angle!.Value > 90.0,
+            $"Bei 7h nach Mittag sollte der Winkel >90° sein, war aber {angle.Value:F1}°.");
+    }
+
+    [Fact]
+    public void CalculateHourLineAngle_AtSixHours_ReturnsExact90Degrees()
+    {
+        // ── EINGABE ────────────────────────────────────────────
+        // ── VERARBEITUNG ───────────────────────────────────────
+        double anglePlus6  = SundialCalculator.CalculateHourLineAngle( 6, MannheimLatitude);
+        double angleMinus6 = SundialCalculator.CalculateHourLineAngle(-6, MannheimLatitude);
+
+        // ── AUSGABE ────────────────────────────────────────────
+        // ±6h = ±90° (Ost-West-Linie), unabhängig vom Breitengrad
+        Assert.Equal( 90.0, anglePlus6,  AngleTolerance);
+        Assert.Equal(-90.0, angleMinus6, AngleTolerance);
+    }
+
+    [Fact]
+    public void CalculateHourLineAngle_Beyond6Hours_ExceedsNinetyDegrees()
+    {
+        // ── EINGABE ────────────────────────────────────────────
+        // ── VERARBEITUNG ───────────────────────────────────────
+        double anglePlus7 = SundialCalculator.CalculateHourLineAngle(7, MannheimLatitude);
+
+        // ── AUSGABE ────────────────────────────────────────────
+        // Quadrantenkorrektur: Winkel jenseits der Ost-West-Linie
+        Assert.True(anglePlus7 > 90.0,
+            $"7h-Stundenlinie sollte >90° sein, war aber {anglePlus7:F1}°.");
     }
 
     // ─────────────────────────────────────────────────────────────────────────
