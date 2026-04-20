@@ -10,6 +10,8 @@
 //   Breitengrades. Verwendet astronomische Standardformeln.
 // ============================================================
 
+using Sonnenuhr.Models;
+
 namespace Sonnenuhr.Services;
 
 /// <summary>
@@ -35,6 +37,9 @@ public static class SundialCalculator
 
     /// <summary>Maximaler Stundenlinien-Offset (±8h deckt lange Sommertage in Mitteleuropa ab).</summary>
     private const int MaxHourLineOffset = 8;
+
+    /// <summary>Breitengradbereich für neutrale Äquatorbehandlung.</summary>
+    private const double EquatorThresholdDegrees = 2.0;
 
     // ─────────────────────────────────────────────────────────────────────────
     // STUNDENLINIEN-BERECHNUNG
@@ -205,5 +210,172 @@ public static class SundialCalculator
 
         // ── AUSGABE ────────────────────────────────────────────
         return labelTime.ToString("HH:mm");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // ORIENTIERUNG
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Löst den gewünschten Orientierungsmodus in eine konkrete Darstellung auf.
+    /// </summary>
+    public static SundialOrientationMode ResolveOrientationMode(
+        double latitudeDegrees,
+        SundialOrientationMode selectedMode)
+    {
+        // ── EINGABE ────────────────────────────────────────────
+        if (selectedMode != SundialOrientationMode.AutomaticByLocation)
+            return selectedMode;
+
+        // ── VERARBEITUNG ───────────────────────────────────────
+        if (latitudeDegrees > EquatorThresholdDegrees)
+            return SundialOrientationMode.NorthUp;
+
+        if (latitudeDegrees < -EquatorThresholdDegrees)
+            return SundialOrientationMode.SouthUp;
+
+        // Neutrale Äquatornähe: stabiler Standard
+        // ── AUSGABE ────────────────────────────────────────────
+        return SundialOrientationMode.NorthUp;
+    }
+
+    /// <summary>
+    /// Liefert eine verständliche Begründung für die aktuelle Orientierung.
+    /// </summary>
+    public static string GetOrientationReasonText(
+        double latitudeDegrees,
+        SundialOrientationMode selectedMode)
+    {
+        // ── EINGABE ────────────────────────────────────────────
+        SundialOrientationMode resolved = ResolveOrientationMode(latitudeDegrees, selectedMode);
+
+        // ── VERARBEITUNG & AUSGABE ─────────────────────────────
+        if (selectedMode == SundialOrientationMode.NorthUp)
+            return "Manuell gewählt: Nord oben.";
+
+        if (selectedMode == SundialOrientationMode.SouthUp)
+            return "Manuell gewählt: Süd oben.";
+
+        if (Math.Abs(latitudeDegrees) <= EquatorThresholdDegrees)
+            return "Automatik: Äquatornähe erkannt; stabiler Standard Nord oben.";
+
+        return resolved == SundialOrientationMode.NorthUp
+            ? "Automatik: Standort liegt auf der Nordhalbkugel."
+            : "Automatik: Standort liegt auf der Südhalbkugel.";
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // SONNENPOSITION
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Berechnet Sonnenhöhe und Sonnenazimut für einen lokalen Zeitpunkt.
+    /// </summary>
+    /// <remarks>
+    /// Verwendet NOAA-Näherungsformeln für:
+    /// - Gleichung der Zeit
+    /// - Sonnendeklination
+    /// - Stundenwinkel
+    /// Daraus werden Sonnenhöhe und Azimut für den Standort abgeleitet.
+    /// </remarks>
+    public static SolarPosition CalculateSolarPosition(
+        DateTime currentLocalTime,
+        Location location,
+        TimeZoneInfo timeZone)
+    {
+        // ── EINGABE ────────────────────────────────────────────
+        return CalculateSolarPosition(
+            currentLocalTime,
+            location.Latitude,
+            location.Longitude,
+            timeZone);
+    }
+
+    /// <summary>
+    /// Berechnet Sonnenhöhe und Sonnenazimut für einen lokalen Zeitpunkt.
+    /// </summary>
+    public static SolarPosition CalculateSolarPosition(
+        DateTime currentLocalTime,
+        double latitudeDegrees,
+        double longitudeDegrees,
+        TimeZoneInfo timeZone)
+    {
+        // ── EINGABE ────────────────────────────────────────────
+        double latRad = DegreesToRadians(latitudeDegrees);
+        int dayOfYear = currentLocalTime.DayOfYear;
+        double hour = currentLocalTime.Hour
+                    + currentLocalTime.Minute / 60.0
+                    + currentLocalTime.Second / 3600.0;
+
+        // ── VERARBEITUNG ───────────────────────────────────────
+        // Fractional year (NOAA)
+        double gamma = 2.0 * Math.PI / 365.0 * (dayOfYear - 1 + (hour - 12.0) / 24.0);
+
+        // Gleichung der Zeit in Minuten
+        double equationOfTime = 229.18 * (
+            0.000075
+            + 0.001868 * Math.Cos(gamma)
+            - 0.032077 * Math.Sin(gamma)
+            - 0.014615 * Math.Cos(2 * gamma)
+            - 0.040849 * Math.Sin(2 * gamma));
+
+        // Sonnendeklination in Bogenmaß
+        double declination = 0.006918
+                           - 0.399912 * Math.Cos(gamma)
+                           + 0.070257 * Math.Sin(gamma)
+                           - 0.006758 * Math.Cos(2 * gamma)
+                           + 0.000907 * Math.Sin(2 * gamma)
+                           - 0.002697 * Math.Cos(3 * gamma)
+                           + 0.001480 * Math.Sin(3 * gamma);
+
+        // Wahre Sonnenzeit in Minuten
+        double utcOffsetMinutes = timeZone.GetUtcOffset(currentLocalTime).TotalMinutes;
+        double trueSolarMinutes = hour * 60.0 + equationOfTime + 4.0 * longitudeDegrees - utcOffsetMinutes;
+        trueSolarMinutes = (trueSolarMinutes % 1440.0 + 1440.0) % 1440.0;
+
+        // Stundenwinkel in Grad / Bogenmaß
+        double hourAngleDegrees = trueSolarMinutes / 4.0 - 180.0;
+        if (hourAngleDegrees < -180.0)
+            hourAngleDegrees += 360.0;
+        double hourAngle = DegreesToRadians(hourAngleDegrees);
+
+        // Sonnenhöhe
+        double cosZenith = Math.Sin(latRad) * Math.Sin(declination)
+                         + Math.Cos(latRad) * Math.Cos(declination) * Math.Cos(hourAngle);
+        cosZenith = Math.Clamp(cosZenith, -1.0, 1.0);
+
+        double zenith = Math.Acos(cosZenith);
+        double altitudeDegrees = 90.0 - RadiansToDegrees(zenith);
+
+        // Sonnenazimut: 0° = Nord, 90° = Ost, 180° = Süd, 270° = West
+        double azimuth = Math.Atan2(
+            Math.Sin(hourAngle),
+            Math.Cos(hourAngle) * Math.Sin(latRad) - Math.Tan(declination) * Math.Cos(latRad));
+        double azimuthDegrees = (RadiansToDegrees(azimuth) + 180.0 + 360.0) % 360.0;
+
+        // ── AUSGABE ────────────────────────────────────────────
+        return new SolarPosition(altitudeDegrees, azimuthDegrees, altitudeDegrees > 0.0);
+    }
+
+    /// <summary>
+    /// Berechnet die relative Schattenlänge (Schatten/Objekthöhe) aus der Sonnenhöhe.
+    /// </summary>
+    /// <returns>
+    /// Faktor der Schattenlänge oder <c>null</c>, wenn die Sonne nicht über dem Horizont steht.
+    /// </returns>
+    public static double? CalculateShadowLengthFactor(double solarAltitudeDegrees)
+    {
+        // ── EINGABE ────────────────────────────────────────────
+        if (solarAltitudeDegrees <= 0.0)
+            return null;
+
+        // ── VERARBEITUNG ───────────────────────────────────────
+        double altitudeRad = DegreesToRadians(solarAltitudeDegrees);
+        double tanAltitude = Math.Tan(altitudeRad);
+        if (tanAltitude <= 0.0001)
+            return null;
+
+        // ── AUSGABE ────────────────────────────────────────────
+        return 1.0 / tanAltitude;
     }
 }

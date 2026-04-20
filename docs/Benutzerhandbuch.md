@@ -318,6 +318,24 @@ Im Abschnitt **„Anzeigeoptionen"** können Sie konfigurieren, welche Informati
 | **Dämmerungslinien einzeichnen** | Zeichnet Hilfslinien für die bürgerliche Dämmerung | Deaktiviert |
 | **Aktuelle Stunde hervorheben** | Hebt die aktuelle Stunde auf dem Zifferblatt hervor | Aktiviert |
 | **Römische Ziffern verwenden** | Stellt Stundenmarkierungen als römische Ziffern dar | Deaktiviert |
+| **Perspektivische 3D-Sonnenuhr verwenden** | Zeichnet die Sonnenuhr als perspektivische Platte mit Tiefenwirkung | Aktiviert |
+
+### 6.4 Ausrichtung der Sonnenuhr (Meilenstein 1)
+
+Im Konfigurationsdialog steht die neue Einstellung **„Ausrichtung der Sonnenuhr"** zur Verfügung:
+
+| Option | Wirkung |
+|---|---|
+| **Automatisch nach Standort** | Nordhalbkugel → Nord oben, Südhalbkugel → Süd oben |
+| **Nord oben** | Erzwingt Nord oben unabhängig vom Standort |
+| **Süd oben** | Erzwingt Süd oben unabhängig vom Standort |
+
+Zusätzlich zeigt der Dialog eine kurze Begründung an, z. B.:
+
+- `Aktuell wirksam: Nord oben`
+- `Begründung: Automatik: Standort liegt auf der Nordhalbkugel.`
+
+In Äquatornähe verwendet die Automatik einen stabilen Standard und weist darauf hin, dass eine manuelle Wahl möglich ist.
 
 ---
 

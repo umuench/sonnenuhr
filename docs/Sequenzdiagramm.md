@@ -471,4 +471,39 @@ sequenceDiagram
 
 ---
 
+## 6. Sequenzdiagramm: 3D-Sonnenuhr und physikalischer Schatten (Meilenstein 1)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant MF as MainForm
+    participant WGS as WallpaperGeneratorService
+    participant SC as SundialCalculator
+    participant CFG as WallpaperConfig
+
+    MF->>WGS: GenerateWallpaper(..., currentTime, timeZone)
+    WGS->>SC: ResolveOrientationMode(location.Latitude, CFG.OrientationMode)
+    SC-->>WGS: resolvedOrientation
+
+    WGS->>SC: CalculateSolarPosition(currentTime, location, timeZone)
+    SC-->>WGS: SolarPosition(altitude, azimuth, isAboveHorizon)
+
+    WGS->>WGS: DrawPerspectiveSundial(...)
+    WGS->>WGS: DrawDialPlate3D(elliptische Platte + Tagessektor)
+    WGS->>WGS: DrawProjectedHourLines(...)
+    WGS->>WGS: DrawProjectedGnomonAndShadow(...)
+
+    alt Sonne über Horizont
+        WGS->>SC: CalculateShadowLengthFactor(altitude)
+        SC-->>WGS: factor
+        Note over WGS: Schattenrichtung = Azimut + 180°\nSchattenlänge = gnomonHeight * factor
+    else Sonne unter Horizont
+        Note over WGS: Kein Schatten zeichnen
+    end
+```
+
+Die manuelle Ausrichtung beeinflusst ausschließlich die Ansichtstransformation der Platte; die astronomische Berechnung selbst bleibt unverändert koordinatenbasiert.
+
+---
+
 *Dokument erstellt von: Uwe Markus Münch | Breihof IT GmbH | IHK Rhein-Neckar | 01.07.2026*
